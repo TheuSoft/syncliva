@@ -2,8 +2,10 @@
 
 import {
   FileText,
+  Home,
   LogOut,
   Pill,
+  User,
   Users,
 } from "lucide-react";
 import Image from "next/image";
@@ -32,6 +34,11 @@ import {
 import { authClient } from "@/lib/auth-client";
 
 const doctorItems = [
+  {
+    title: "Dashboard",
+    url: "/doctor/dashboard",
+    icon: Home,
+  },
   {
     title: "Pacientes Marcados",
     url: "/doctor/appointments",
@@ -66,7 +73,7 @@ export function DoctorSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="border-b p-4">
+      <SidebarHeader className="border-b px-4 py-4 h-16">
         <div className="flex items-center">
           <Image src="/logo.svg" alt="Portal Médico" width={136} height={28} />
         </div>
@@ -112,6 +119,12 @@ export function DoctorSidebar() {
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
+                <DropdownMenuItem asChild>
+                  <Link href="/doctor/profile">
+                    <User />
+                    Minha Conta
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleSignOut}>
                   <LogOut />
                   Sair

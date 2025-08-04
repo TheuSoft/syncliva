@@ -310,15 +310,29 @@ export default function ReportsPage() {
                 <label className="text-sm font-medium">
                   {tipoRelatorio === 'mensal' ? 'Mês' : 'Mês (Inicial)'}
                 </label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={12}
-                  value={mes}
-                  onChange={(e) => setMes(Number(e.target.value))}
-                  placeholder="Mês"
+                <Select 
+                  value={mes.toString()} 
+                  onValueChange={(value) => setMes(parseInt(value))}
                   disabled={tipoRelatorio === 'anual'}
-                />
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o mês" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Janeiro</SelectItem>
+                    <SelectItem value="2">Fevereiro</SelectItem>
+                    <SelectItem value="3">Março</SelectItem>
+                    <SelectItem value="4">Abril</SelectItem>
+                    <SelectItem value="5">Maio</SelectItem>
+                    <SelectItem value="6">Junho</SelectItem>
+                    <SelectItem value="7">Julho</SelectItem>
+                    <SelectItem value="8">Agosto</SelectItem>
+                    <SelectItem value="9">Setembro</SelectItem>
+                    <SelectItem value="10">Outubro</SelectItem>
+                    <SelectItem value="11">Novembro</SelectItem>
+                    <SelectItem value="12">Dezembro</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Ano</label>
