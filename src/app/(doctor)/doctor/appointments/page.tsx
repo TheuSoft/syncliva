@@ -1,34 +1,10 @@
 import { getDoctorAppointments } from "@/actions/get-doctor-appointments";
-import { Badge } from "@/components/ui/badge";
+import SearchableAppointmentsList from "@/app/(protected)/appointments/_components/searchable-appointments-list";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageContainer } from "@/components/ui/page-container";
-import { formatCurrencyInCents } from "@/helpers/currency";
+import type { AppointmentWithRelations } from "@/types/appointments";
 
-function getStatusColor(status: string) {
-  switch (status) {
-    case "confirmed":
-      return "bg-green-100 text-green-800";
-    case "pending":
-      return "bg-yellow-100 text-yellow-800";
-    case "canceled":
-      return "bg-red-100 text-red-800";
-    default:
-      return "bg-gray-100 text-gray-800";
-  }
-}
-
-function getStatusText(status: string) {
-  switch (status) {
-    case "confirmed":
-      return "Confirmado";
-    case "pending":
-      return "Pendente";
-    case "canceled":
-      return "Cancelado";
-    default:
-      return status;
-  }
-}
+// Removido funções não utilizadas
 
 export default async function DoctorAppointments() {
   const result = await getDoctorAppointments();
@@ -59,6 +35,40 @@ export default async function DoctorAppointments() {
   }
 
   const appointments = result.appointments;
+  const doctorId = appointments.length > 0 ? appointments[0].doctor.id : undefined;
+
+  // Extrair pacientes e médicos para o modal de edição
+  const patients = appointments.map(app => ({
+    id: app.patient.id,
+    name: app.patient.name,
+    email: app.patient.email,
+    phoneNumber: app.patient.phoneNumber,
+    sex: app.patient.sex,
+  }));
+
+  const doctors = appointments.map(app => ({
+    id: app.doctor.id,
+    name: app.doctor.name,
+    specialty: app.doctor.specialty,
+    appointmentPriceInCents: app.appointmentPriceInCents,
+    availableFromWeekDay: 0, // Valor padrão
+    availableToWeekDay: 6,   // Valor padrão
+  }));
+
+  // Converter o formato do resultado para o formato esperado por AppointmentWithRelations
+  const appointmentsFormatted: AppointmentWithRelations[] = appointments.map(app => ({
+    ...app,
+    clinicId: "", // Adicionar propriedades necessárias que estão ausentes no resultado da API
+    patientId: app.patient.id,
+    doctorId: app.doctor.id,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    // Garantir que doctor tenha todas as propriedades necessárias
+    doctor: {
+      ...app.doctor,
+      appointmentPriceInCents: app.appointmentPriceInCents // Usar o valor do agendamento como fallback
+    }
+  }));
 
   return (
     <PageContainer>
@@ -71,44 +81,15 @@ export default async function DoctorAppointments() {
             Visualize e gerencie seus pacientes agendados ({appointments.length} agendamento{appointments.length !== 1 ? 's' : ''})
           </p>
         </div>
-
-        <div className="grid gap-4">
-          {appointments.map((appointment) => (
-            <Card key={appointment.id}>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-semibold">
-                        {appointment.patient.name}
-                      </h3>
-                      <Badge className={getStatusColor(appointment.status)}>
-                        {getStatusText(appointment.status)}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {appointment.patient.email} • {appointment.patient.phoneNumber}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Valor: {formatCurrencyInCents(appointment.appointmentPriceInCents)}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium">
-                      {new Date(appointment.date).toLocaleDateString("pt-BR")}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(appointment.date).toLocaleTimeString("pt-BR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        
+        {/* Usar o componente SearchableAppointmentsList com isDoctor=true */}
+        <SearchableAppointmentsList 
+          initialAppointments={appointmentsFormatted}
+          patients={patients} 
+          doctors={doctors}
+          doctorId={doctorId}
+          isDoctor={true}
+        />
 
         {appointments.length === 0 && (
           <Card>

@@ -1,18 +1,16 @@
 "use client";
 
-import { isWithinInterval } from "date-fns";
-import { useState } from "react";
-import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { useMemo,useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { DataTable } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { AppointmentWithRelations } from "@/types/appointments";
 
-import { AppointmentDatePresets } from "./appointment-date-presets";
-import { DatePickerWithRange } from "./date-range-picker";
+import { AppointmentsTimeline } from "./appointments-timeline";
 import { EditAppointmentModal } from "./edit-appointment-modal";
-import { createAppointmentsTableColumns } from "./table-columns";
 
 // Tipos para pacientes e médicos
 type Patient = {
@@ -28,70 +26,90 @@ type Doctor = {
   name: string;
   specialty: string;
   appointmentPriceInCents: number;
+  availableFromWeekDay: number;
+  availableToWeekDay: number;
 };
 
 interface SearchableAppointmentsListProps {
   initialAppointments: AppointmentWithRelations[];
-  patients: Patient[]; // ✅ Nova prop
-  doctors: Doctor[]; // ✅ Nova prop
+  patients: Patient[];
+  doctors: Doctor[];
+  doctorId?: string; // Parâmetro opcional para filtrar agendamentos por médico
+  isDoctor?: boolean; // Indica se estamos no dashboard do médico
 }
-
-const getRowClassName = (appointment: AppointmentWithRelations): string => {
-  switch (appointment.status) {
-    case "confirmed":
-      return "bg-green-50/50 border-l-4 border-green-400";
-    case "canceled":
-      return "bg-red-50/50 opacity-75 border-l-4 border-red-400";
-    default:
-      return "border-l-4 border-transparent";
-  }
-};
 
 const SearchableAppointmentsList = ({
   initialAppointments,
-  patients, // ✅ Nova prop
-  doctors, // ✅ Nova prop
+  patients,
+  doctors,
+  doctorId,
+  isDoctor = false
 }: SearchableAppointmentsListProps) => {
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [selectedMonth, setSelectedMonth] = useState<string>("all");
+  const [selectedDoctor, setSelectedDoctor] = useState<string>("all");
 
   // ✅ Estados para modal de edição
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [appointmentToEdit, setAppointmentToEdit] =
     useState<AppointmentWithRelations | null>(null);
 
-  const isDateInRange = (appointmentDate: Date, range: DateRange): boolean => {
-    if (!range.from) return true;
+  // Calcular meses disponíveis dos agendamentos agrupados por ano
+  const availableMonthsByYear = useMemo(() => {
+    const monthsMap = new Map<string, { key: string; label: string; year: string }>();
+    
+    initialAppointments.forEach((appointment) => {
+      const appointmentDate = new Date(appointment.date);
+      const monthKey = format(appointmentDate, "yyyy-MM");
+      const year = format(appointmentDate, "yyyy");
+      // Formatar com primeira letra maiúscula
+      let monthLabel = format(appointmentDate, "MMMM", { locale: ptBR });
+      monthLabel = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
+      
+      monthsMap.set(monthKey, { key: monthKey, label: monthLabel, year });
+    });
 
-    if (range.from && range.to) {
-      return isWithinInterval(appointmentDate, {
-        start: range.from,
-        end: range.to,
-      });
-    }
+    const months = Array.from(monthsMap.values());
+    
+    // Agrupar por ano
+    const groupedByYear = months.reduce((acc, month) => {
+      if (!acc[month.year]) {
+        acc[month.year] = [];
+      }
+      acc[month.year].push(month);
+      return acc;
+    }, {} as Record<string, { key: string; label: string; year: string }[]>);
 
-    if (range.from && !range.to) {
-      return appointmentDate.toDateString() === range.from.toDateString();
-    }
+    // Ordenar anos (mais recente primeiro) e meses dentro de cada ano
+    const sortedYears = Object.keys(groupedByYear).sort((a, b) => b.localeCompare(a));
+    
+    sortedYears.forEach(year => {
+      groupedByYear[year].sort((a, b) => b.key.localeCompare(a.key));
+    });
 
-    return true;
-  };
+    return { groupedByYear, sortedYears };
+  }, [initialAppointments]);
 
   const filteredAppointments = initialAppointments.filter((appointment) => {
     const matchesSearch = appointment.patient.name
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
 
-    const matchesDate = dateRange
-      ? isDateInRange(appointment.date, dateRange)
-      : true;
+    const matchesMonth = selectedMonth === "all" 
+      ? true 
+      : format(new Date(appointment.date), "yyyy-MM") === selectedMonth;
+      
+    const matchesDoctor = selectedDoctor === "all"
+      ? true
+      : appointment.doctorId === selectedDoctor;
 
-    return matchesSearch && matchesDate;
+    return matchesSearch && matchesMonth && matchesDoctor;
   });
 
   const clearFilters = (): void => {
     setSearchTerm("");
-    setDateRange(undefined);
+    setSelectedMonth("all");
+    setSelectedDoctor("all");
   };
 
   // ✅ Função para abrir modal de edição
@@ -102,23 +120,54 @@ const SearchableAppointmentsList = ({
     setEditModalOpen(true);
   };
 
-  // ✅ Criar colunas com callback de edição
-  const columns = createAppointmentsTableColumns(handleEditAppointment);
-
   return (
     <div className="space-y-4">
-      {/* Filtros de data */}
+      {/* Filtros */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-col gap-2">
-          <p className="text-sm font-medium">Filtrar por período:</p>
-          <div className="flex flex-col gap-2 md:flex-row md:items-center">
-            <DatePickerWithRange
-              date={dateRange}
-              setDate={setDateRange}
-              className="w-full md:w-auto"
-            />
-            <AppointmentDatePresets setDate={setDateRange} />
+        <div className="flex flex-col md:flex-row md:gap-4 gap-2">
+          <div className="flex flex-col gap-2">
+            <p className="text-sm font-medium">Filtrar por mês:</p>
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className="w-full md:w-[280px]">
+                <SelectValue placeholder="Selecione um mês" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os meses</SelectItem>
+                {availableMonthsByYear.sortedYears.map((year) => (
+                  <div key={year}>
+                    <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
+                      {year}
+                    </div>
+                    {availableMonthsByYear.groupedByYear[year].map(({ key, label }) => (
+                      <SelectItem key={key} value={key} className="pl-6">
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </div>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+          
+          {/* Seletor de médicos - somente para admin */}
+          {!isDoctor && (
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-medium">Filtrar por médico:</p>
+              <Select value={selectedDoctor} onValueChange={setSelectedDoctor}>
+                <SelectTrigger className="w-full md:w-[280px]">
+                  <SelectValue placeholder="Selecione um médico" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os médicos</SelectItem>
+                  {doctors.map((doctor) => (
+                    <SelectItem key={doctor.id} value={doctor.id}>
+                      {doctor.name} - {doctor.specialty}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
       </div>
 
@@ -132,7 +181,7 @@ const SearchableAppointmentsList = ({
           className="max-w-sm"
         />
 
-        {(searchTerm || dateRange) && (
+        {(searchTerm || selectedMonth !== "all" || selectedDoctor !== "all") && (
           <Button variant="outline" onClick={clearFilters}>
             Limpar filtros
           </Button>
@@ -145,35 +194,50 @@ const SearchableAppointmentsList = ({
           Mostrando {filteredAppointments.length} de{" "}
           {initialAppointments.length} agendamentos
           {searchTerm && ` • Busca: "${searchTerm}"`}
-          {dateRange?.from &&
-            ` • Período: ${dateRange.from.toLocaleDateString("pt-BR")}${
-              dateRange.to
-                ? ` até ${dateRange.to.toLocaleDateString("pt-BR")}`
-                : ""
-            }`}
+          {selectedMonth !== "all" && (() => {
+            // Encontrar o mês selecionado em todos os anos
+            for (const year of availableMonthsByYear.sortedYears) {
+              const month = availableMonthsByYear.groupedByYear[year].find(m => m.key === selectedMonth);
+              if (month) {
+                return ` • Mês: ${month.label} de ${month.year}`;
+              }
+            }
+            return ` • Mês: ${selectedMonth}`;
+          })()}
+          {selectedDoctor !== "all" && (() => {
+            // Encontrar o médico selecionado
+            const doctor = doctors.find(d => d.id === selectedDoctor);
+            if (doctor) {
+              return ` • Médico: ${doctor.name}`;
+            }
+            return ` • Médico: ID ${selectedDoctor}`;
+          })()}
         </p>
       </div>
 
-      {/* DataTable */}
-      <DataTable
-        data={filteredAppointments}
-        columns={columns}
-        getRowClassName={getRowClassName}
+      {/* Timeline de Agendamentos */}
+      <AppointmentsTimeline
+        appointments={filteredAppointments}
+        onEdit={handleEditAppointment}
+        doctorId={doctorId}
+        isDoctor={isDoctor}
       />
 
-      {/* ✅ Modal de Edição */}
-      <EditAppointmentModal
-        appointment={appointmentToEdit}
-        patients={patients}
-        doctors={doctors}
-        open={editModalOpen}
-        onOpenChange={(open) => {
-          setEditModalOpen(open);
-          if (!open) {
-            setAppointmentToEdit(null);
-          }
-        }}
-      />
+      {/* Modal de Edição - não mostrar para médicos */}
+      {!isDoctor && (
+        <EditAppointmentModal
+          appointment={appointmentToEdit}
+          patients={patients}
+          doctors={doctors}
+          open={editModalOpen}
+          onOpenChange={(open) => {
+            setEditModalOpen(open);
+            if (!open) {
+              setAppointmentToEdit(null);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
