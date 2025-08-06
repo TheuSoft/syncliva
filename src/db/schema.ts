@@ -7,6 +7,7 @@ import {
   text,
   time,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -172,6 +173,11 @@ export const patientsTable = pgTable("patients", {
   updatedAt: timestamp("updated_at")
     .defaultNow()
     .$onUpdate(() => new Date()),
+}, (table) => {
+  return {
+    // Adicionando índice único para CPF + clinicId para evitar duplicação
+    cpfClinicIdx: uniqueIndex("patients_cpf_clinic_idx").on(table.cpf, table.clinicId),
+  };
 });
 
 export const patientsTableRelations = relations(

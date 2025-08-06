@@ -10,8 +10,13 @@ import { usersToClinicsTable } from "@/db/schema";
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
-    usePlural: true,
-    schema,
+    usePlural: false, // Mudando para false já que suas tabelas estão no singular
+    schema: {
+      usersTable: schema.usersTable,
+      accountsTable: schema.accountsTable,
+      sessionsTable: schema.sessionsTable,
+      verificationsTable: schema.verificationsTable, // Aqui está o mapeamento explícito
+    },
   }),
   socialProviders: {
     google: {

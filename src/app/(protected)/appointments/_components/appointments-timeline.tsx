@@ -50,15 +50,45 @@ export function AppointmentsTimeline({ appointments, onEdit, doctorId, isDoctor 
       monthGroups.get(monthYear)!.push(appointment);
     });
 
-    // Converter para array e ordenar meses (mais recentes primeiro)
+    // Converter para array e extrair dados para ordenação personalizada
     monthGroups.forEach((appointments, monthYear) => {
       groups.push({ monthYear, appointments });
     });
-
+    
+    // Capturar o mês e ano atual
+    const now = new Date();
+    const currentMonthYear = format(now, "MMMM 'de' yyyy", { locale: ptBR });
+    const currentMonthYearCapitalized = currentMonthYear.charAt(0).toUpperCase() + currentMonthYear.slice(1);
+    
+    // Ordenação inteligente: mês atual primeiro, meses futuros depois em ordem cronológica, meses passados por último
     return groups.sort((a, b) => {
+      // Extrair mês e ano de cada grupo
+      const monthYearA = a.monthYear;
+      const monthYearB = b.monthYear;
+      
+      // Se um dos grupos é o mês atual, ele tem prioridade
+      if (monthYearA === currentMonthYearCapitalized) return -1;
+      if (monthYearB === currentMonthYearCapitalized) return 1;
+      
+      // Para os demais, usamos a data do primeiro agendamento para ordenação
       const dateA = new Date(a.appointments[0].date);
       const dateB = new Date(b.appointments[0].date);
-      return dateB.getTime() - dateA.getTime();
+      
+      // Verificar se os meses são futuros ou passados em relação ao mês atual
+      const isMonthAFuture = isAfter(dateA, now);
+      const isMonthBFuture = isAfter(dateB, now);
+      
+      // Se ambos são futuros ou ambos são passados, ordenamos cronologicamente
+      if ((isMonthAFuture && isMonthBFuture) || (!isMonthAFuture && !isMonthBFuture)) {
+        // Meses futuros em ordem crescente (mais próximos primeiro)
+        // Meses passados em ordem decrescente (mais recentes primeiro)
+        return isMonthAFuture 
+          ? dateA.getTime() - dateB.getTime()  // Crescente para futuros
+          : dateB.getTime() - dateA.getTime(); // Decrescente para passados
+      }
+      
+      // Se um é futuro e outro é passado, o futuro vem antes
+      return isMonthAFuture ? -1 : 1;
     });
   }, [filteredAppointments]);
 
