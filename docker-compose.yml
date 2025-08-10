@@ -1,0 +1,55 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file:
+      - .env.docker
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      # Usa $$ para evitar expansão pelo Compose e deixar para o shell dentro do container
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    ports:
+      - "5432:5432" # opcional: expor local
+
+  migrate:
+    build: .
+    env_file:
+      - .env.docker
+    environment:
+      NODE_ENV: development
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: ["npx", "drizzle-kit", "push"]
+
+  app:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env.docker
+    environment:
+      NODE_ENV: development
+    volumes:
+      - .:/app:cached
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+    # Comando padrão do Dockerfile (npm run dev) inicia após migrações
+
+volumes:
+  db_data:
+
+# Notas:
+# - Serviço 'migrate' roda automaticamente em cada 'up' garantindo schema atualizado.
+# - Variáveis centralizadas em .env.docker (não commitar segredos reais).
+# - Para rodar migrações manualmente: docker compose run --rm migrate
+# - Nenhum script shell customizado foi criado; apenas comandos padrão docker/npx.

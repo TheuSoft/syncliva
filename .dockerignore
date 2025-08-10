@@ -1,0 +1,14 @@
+node_modules
+.next
+dist
+build
+coverage
+Dockerfile*
+docker-compose*.yml
+README.md
+.git
+.gitignore
+*.log
+drizzle/*.json
+drizzle/*.sql
+!.env.docker.example
