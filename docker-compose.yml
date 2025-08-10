@@ -1,9 +1,11 @@
+name: syncliva
 services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
     env_file:
       - .env.docker
+    container_name: syncliva-db
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
@@ -25,6 +27,7 @@ services:
       db:
         condition: service_healthy
     entrypoint: ["npx", "drizzle-kit", "push"]
+    container_name: syncliva-migrate
 
   app:
     build: .
@@ -33,6 +36,7 @@ services:
       - .env.docker
     environment:
       NODE_ENV: development
+    container_name: syncliva-app
     volumes:
       - .:/app:cached
       - /app/node_modules
