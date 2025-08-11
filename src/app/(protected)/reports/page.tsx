@@ -1,7 +1,12 @@
 "use client";
 
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+// jsPDF e autotable (~grandes) carregados sob demanda via dynamic import.
+// Evita custo de parse inicial desta página para usuários que não exportam PDF.
+// Mantemos tipos leves usando any para não puxar tipos gigantes.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let jsPDFRef: any | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let autoTableRef: any | null = null;
 import { CalendarIcon, DollarSignIcon,DownloadIcon, FileTextIcon, UserIcon } from "lucide-react";
 import React, { useEffect, useState } from "react";
 
@@ -67,18 +72,16 @@ export default function ReportsPage() {
     setErro("");
     try {
       if (tipoRelatorio === 'anual') {
-        // Para relatório anual, buscar todos os meses do ano
-        const resultados = [];
-        for (let m = 1; m <= 12; m++) {
-          const filtro: RelatorioFiltro = { 
-            mes: m, 
-            ano, 
-            doctorId: doctorId === "all" || !doctorId ? undefined : doctorId 
-          };
-          const resultado = await getRelatorioConsultasAction(filtro);
-          resultados.push(...resultado);
-        }
-        setAgendamentos(resultados);
+        // Busca paralela dos 12 meses para reduzir latência total.
+        const filtros: RelatorioFiltro[] = Array.from({ length: 12 }, (_, i) => ({
+          mes: i + 1,
+          ano,
+          doctorId: doctorId === "all" || !doctorId ? undefined : doctorId,
+        }));
+        const resultadosMeses = await Promise.all(
+          filtros.map((f) => getRelatorioConsultasAction(f))
+        );
+        setAgendamentos(resultadosMeses.flat());
       } else {
         // Relatório mensal normal
         const filtro: RelatorioFiltro = { 
@@ -139,8 +142,16 @@ export default function ReportsPage() {
   const estatisticas = calcularEstatisticas();
 
   // Função para gerar PDF
-  const gerarPDF = () => {
-    const doc = new jsPDF();
+  const gerarPDF = async () => {
+    if (!jsPDFRef) {
+      const mod = await import('jspdf');
+      jsPDFRef = mod.default;
+    }
+    if (!autoTableRef) {
+      const mod = await import('jspdf-autotable');
+      autoTableRef = mod.default;
+    }
+    const doc = new jsPDFRef();
     const pageWidth = doc.internal.pageSize.width;
     
     // Título
@@ -214,7 +225,7 @@ export default function ReportsPage() {
         formatCurrencyInCents(ag.appointmentPriceInCents)
       ]);
       
-      autoTable(doc, {
+  autoTableRef(doc, {
         head: [['Paciente', 'Médico', 'Data', 'Horário', 'Status', 'Valor']],
         body: tableData,
         startY: yPosition,

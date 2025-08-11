@@ -101,3 +101,34 @@ docker compose down -v
 - Serviço `migrate` executa `npx drizzle-kit push` a cada `up` (idempotente).
 - Ajuste variáveis criando `.env.docker` a partir de `.env.docker.example`.
 - Apenas comandos padrão Docker/npx utilizados (sem scripts customizados).
+
+## Performance & Otimizações
+
+### Pool de Conexões Postgres
+Em dev o hot-reload recriava múltiplos pools gerando alto consumo de memória. Agora `src/db/index.ts` reutiliza um pool global. Ajuste limite via `PG_POOL_MAX` (default 10).
+
+### Import Dinâmico de jsPDF
+A página de relatórios carregava `jspdf` e `jspdf-autotable` (~centenas de KB) no primeiro paint. Agora os módulos são carregados somente ao clicar em Exportar PDF.
+
+### Paralelização de Consultas Anuais
+Relatório anual fazia 12 requisições sequenciais; agora usa `Promise.all`, reduzindo latência e tempo de CPU ociosa.
+
+### Índices Adicionais
+Arquivo `drizzle/0002_performance_indexes.sql` cria índices:
+- `(clinic_id, status, date)` em `appointments`
+- `(doctor_id, date)` em `appointments`
+- `(patient_id, date)` em `appointments`
+
+Execute após gerar/push migrações (se necessário):
+```bash
+docker compose exec db psql -U $POSTGRES_USER -d $POSTGRES_DB -f /var/lib/postgresql/data/../.. (ajuste caminho) 
+```
+Ou aplique convertendo em migration Drizzle futura.
+
+### Dependências Duplicadas de Datas
+Projeto usa `date-fns` e `dayjs`. Considere padronizar em apenas uma biblioteca para reduzir bundle e tempo de parse.
+
+### Próximos Passos Possíveis
+- Dividir componentes grandes em imports dinâmicos (`next/dynamic`) para charts e tabelas pesadas.
+- Habilitar `reactStrictMode` e `swcMinify` em `next.config.ts` e analisar memory leaks.
+- Medir bundle com `ANALYZE=true` (ex.: `next build` + `@next/bundle-analyzer`).
