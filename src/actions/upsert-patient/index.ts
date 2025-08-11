@@ -1,8 +1,8 @@
 "use server";
 
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { patientsTable } from "@/db/schema";
@@ -57,4 +57,8 @@ export const upsertPatient = actionClient
       });
 
     revalidatePath("/patients");
+    
+    return {
+      success: true
+    };
   });

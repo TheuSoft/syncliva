@@ -113,9 +113,34 @@ export default function UpsertPatientForm({
   const onSubmit = async (values: UpsertPatientSchema) => {
     try {
       setIsSubmitting(true);
-      await upsertPatient({ ...values, id: patient?.id }); // ✅ Session handled on server
-      toast.success("Paciente salvo com sucesso!");
-      onSuccess();
+      const result = await upsertPatient({ ...values, id: patient?.id }); // ✅ Session handled on server
+      
+      // Verifica se há erros de validação
+      if (result.validationErrors) {
+        // Erros de validação são tratados automaticamente pelo form
+        console.log("Erros de validação:", result.validationErrors);
+        // Exibir o primeiro erro de validação encontrado
+        toast.error("Há campos inválidos no formulário. Verifique e tente novamente.");
+      }
+      // Verifica se há erro específico retornado pela action
+      else if (result.data && typeof result.data === 'object' && 'error' in result.data) {
+        // Se a action retornou um erro específico (como CPF duplicado)
+        const errorMessage = result.data.error as string;
+        toast.error(errorMessage);
+        // Se for erro de CPF, destacar o campo no formulário
+        if (errorMessage.includes("CPF")) {
+          form.setError("cpf", { 
+            type: "manual", 
+            message: "CPF já cadastrado no sistema"
+          });
+        }
+      } 
+      // Verifica se a operação foi bem-sucedida
+      else if (result.data && typeof result.data === 'object' && 'success' in result.data) {
+        // Se não houve erro, tudo ocorreu bem
+        toast.success("Paciente salvo com sucesso!");
+        onSuccess();
+      }
     } catch (err) {
       console.error("Erro ao salvar paciente:", err);
       toast.error("Erro ao salvar paciente.");
@@ -214,9 +239,9 @@ export default function UpsertPatientForm({
           <FormField
             name="cpf"
             control={form.control}
-            render={({ field }) => (
+            render={({ field, fieldState }) => (
               <FormItem>
-                <FormLabel>CPF</FormLabel>
+                <FormLabel>CPF {patient ? "(não editável)" : ""}</FormLabel>
                 <FormControl>
                   <PatternFormat
                     format="###.###.###-##"
@@ -225,9 +250,11 @@ export default function UpsertPatientForm({
                     value={field.value || ""}
                     onValueChange={(v) => field.onChange(v.formattedValue)}
                     customInput={Input}
+                    className={fieldState.error ? "border-red-500 focus-visible:ring-red-500" : ""}
+                    disabled={!!patient} // Desabilitar edição do CPF quando estiver editando um paciente existente
                   />
                 </FormControl>
-                <FormMessage />
+                <FormMessage className="text-red-500 font-medium" />
               </FormItem>
             )}
           />
