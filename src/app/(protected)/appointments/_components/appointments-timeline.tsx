@@ -2,7 +2,7 @@
 
 import { format, isAfter, isBefore, isToday, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar, Clock, MapPin, User } from "lucide-react";
+import { Calendar, Clock, Stethoscope, User } from "lucide-react";
 import { useMemo } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -23,10 +23,15 @@ interface GroupedAppointments {
   appointments: AppointmentWithRelations[];
 }
 
-export function AppointmentsTimeline({ appointments, onEdit, doctorId, isDoctor = false }: AppointmentsTimelineProps) {
+export function AppointmentsTimeline({
+  appointments,
+  onEdit,
+  doctorId,
+  isDoctor = false,
+}: AppointmentsTimelineProps) {
   // Filtrar apenas os agendamentos do médico se doctorId for fornecido
-  const filteredAppointments = doctorId 
-    ? appointments.filter(appointment => appointment.doctorId === doctorId) 
+  const filteredAppointments = doctorId
+    ? appointments.filter((appointment) => appointment.doctorId === doctorId)
     : appointments;
   const groupedAppointments = useMemo(() => {
     // Ordenar por data (mais recentes primeiro)
@@ -40,10 +45,12 @@ export function AppointmentsTimeline({ appointments, onEdit, doctorId, isDoctor 
 
     sortedAppointments.forEach((appointment) => {
       const appointmentDate = new Date(appointment.date);
-      let monthYear = format(appointmentDate, "MMMM 'de' yyyy", { locale: ptBR });
+      let monthYear = format(appointmentDate, "MMMM 'de' yyyy", {
+        locale: ptBR,
+      });
       // Capitalizar a primeira letra do mês
       monthYear = monthYear.charAt(0).toUpperCase() + monthYear.slice(1);
-      
+
       if (!monthGroups.has(monthYear)) {
         monthGroups.set(monthYear, []);
       }
@@ -54,39 +61,43 @@ export function AppointmentsTimeline({ appointments, onEdit, doctorId, isDoctor 
     monthGroups.forEach((appointments, monthYear) => {
       groups.push({ monthYear, appointments });
     });
-    
+
     // Capturar o mês e ano atual
     const now = new Date();
     const currentMonthYear = format(now, "MMMM 'de' yyyy", { locale: ptBR });
-    const currentMonthYearCapitalized = currentMonthYear.charAt(0).toUpperCase() + currentMonthYear.slice(1);
-    
+    const currentMonthYearCapitalized =
+      currentMonthYear.charAt(0).toUpperCase() + currentMonthYear.slice(1);
+
     // Ordenação inteligente: mês atual primeiro, meses futuros depois em ordem cronológica, meses passados por último
     return groups.sort((a, b) => {
       // Extrair mês e ano de cada grupo
       const monthYearA = a.monthYear;
       const monthYearB = b.monthYear;
-      
+
       // Se um dos grupos é o mês atual, ele tem prioridade
       if (monthYearA === currentMonthYearCapitalized) return -1;
       if (monthYearB === currentMonthYearCapitalized) return 1;
-      
+
       // Para os demais, usamos a data do primeiro agendamento para ordenação
       const dateA = new Date(a.appointments[0].date);
       const dateB = new Date(b.appointments[0].date);
-      
+
       // Verificar se os meses são futuros ou passados em relação ao mês atual
       const isMonthAFuture = isAfter(dateA, now);
       const isMonthBFuture = isAfter(dateB, now);
-      
+
       // Se ambos são futuros ou ambos são passados, ordenamos cronologicamente
-      if ((isMonthAFuture && isMonthBFuture) || (!isMonthAFuture && !isMonthBFuture)) {
+      if (
+        (isMonthAFuture && isMonthBFuture) ||
+        (!isMonthAFuture && !isMonthBFuture)
+      ) {
         // Meses futuros em ordem crescente (mais próximos primeiro)
         // Meses passados em ordem decrescente (mais recentes primeiro)
-        return isMonthAFuture 
-          ? dateA.getTime() - dateB.getTime()  // Crescente para futuros
+        return isMonthAFuture
+          ? dateA.getTime() - dateB.getTime() // Crescente para futuros
           : dateB.getTime() - dateA.getTime(); // Decrescente para passados
       }
-      
+
       // Se um é futuro e outro é passado, o futuro vem antes
       return isMonthAFuture ? -1 : 1;
     });
@@ -94,27 +105,34 @@ export function AppointmentsTimeline({ appointments, onEdit, doctorId, isDoctor 
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      pending: { 
-        label: "Pendente", 
-        variant: "secondary" as const, 
-        className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800" 
+      pending: {
+        label: "Pendente",
+        variant: "secondary" as const,
+        className:
+          "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800",
       },
-      confirmed: { 
-        label: "Confirmado", 
-        variant: "default" as const, 
-        className: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800" 
+      confirmed: {
+        label: "Agendamento pago",
+        variant: "default" as const,
+        className:
+          "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800",
       },
-      canceled: { 
-        label: "Cancelado", 
-        variant: "destructive" as const, 
-        className: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800" 
+      canceled: {
+        label: "Cancelado",
+        variant: "destructive" as const,
+        className:
+          "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800",
       },
     };
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
-    
+    const config =
+      statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+
     return (
-      <Badge variant={config.variant} className={config.className}>
+      <Badge
+        variant={config.variant}
+        className={`${config.className} px-2 py-0.5 text-xs`}
+      >
         {config.label}
       </Badge>
     );
@@ -125,11 +143,17 @@ export function AppointmentsTimeline({ appointments, onEdit, doctorId, isDoctor 
     const appDate = startOfDay(appointmentDate);
 
     if (isToday(appointmentDate)) {
-      return { label: "Hoje", className: "text-blue-600 dark:text-blue-400 font-semibold" };
+      return {
+        label: "Hoje",
+        className: "text-blue-600 dark:text-blue-400 font-semibold",
+      };
     } else if (isBefore(appDate, today)) {
       return { label: "Passou", className: "text-muted-foreground" };
     } else if (isAfter(appDate, today)) {
-      return { label: "Futuro", className: "text-green-600 dark:text-green-400" };
+      return {
+        label: "Futuro",
+        className: "text-green-600 dark:text-green-400",
+      };
     }
     return { label: "", className: "" };
   };
@@ -138,9 +162,13 @@ export function AppointmentsTimeline({ appointments, onEdit, doctorId, isDoctor 
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">
-          <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium text-primary mb-2">Nenhum agendamento encontrado</h3>
-          <p className="text-muted-foreground text-center">Não há agendamentos para exibir no momento.</p>
+          <Calendar className="text-muted-foreground mb-4 h-12 w-12" />
+          <h3 className="text-primary mb-2 text-lg font-medium">
+            Nenhum agendamento encontrado
+          </h3>
+          <p className="text-muted-foreground text-center">
+            Não há agendamentos para exibir no momento.
+          </p>
         </CardContent>
       </Card>
     );
@@ -148,105 +176,119 @@ export function AppointmentsTimeline({ appointments, onEdit, doctorId, isDoctor 
 
   return (
     <div className="space-y-8">
-      {groupedAppointments.map(({ monthYear, appointments: monthAppointments }) => (
-        <div key={monthYear} className="space-y-4">
-          {/* Header do Mês */}
-          <div className="flex items-center gap-3">
-            <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            <h2 className="text-xl font-semibold text-primary capitalize">
-              {monthYear}
-            </h2>
-            <div className="flex-1 h-px bg-border" />
-            <span className="text-sm text-muted-foreground bg-secondary/30 px-3 py-1 rounded-full">
-              {monthAppointments.length} agendamento{monthAppointments.length !== 1 ? 's' : ''}
-            </span>
-          </div>
+      {groupedAppointments.map(
+        ({ monthYear, appointments: monthAppointments }) => (
+          <div key={monthYear} className="space-y-4">
+            {/* Header do Mês */}
+            <div className="flex items-center gap-3">
+              <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <h2 className="text-primary text-xl font-semibold capitalize">
+                {monthYear}
+              </h2>
+              <div className="bg-border h-px flex-1" />
+              <span className="text-muted-foreground bg-secondary/30 rounded-full px-3 py-1 text-sm">
+                {monthAppointments.length} agendamento
+                {monthAppointments.length !== 1 ? "s" : ""}
+              </span>
+            </div>
 
-          {/* Lista de Agendamentos do Mês */}
-          <div className="grid gap-4">
-            {monthAppointments.map((appointment) => {
-              const appointmentDate = new Date(appointment.date);
-              const dateStatus = getDateStatus(appointmentDate);
-              const price = appointment.appointmentPriceInCents / 100;
+            {/* Lista de Agendamentos do Mês */}
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {monthAppointments.map((appointment) => {
+                const appointmentDate = new Date(appointment.date);
+                const dateStatus = getDateStatus(appointmentDate);
+                const price = appointment.appointmentPriceInCents / 100;
 
-              return (
-                <Card key={appointment.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      {/* Informações principais */}
-                      <div className="flex-1 space-y-2">
-                        {/* Data e hora */}
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span className="font-medium text-sm text-primary">
-                            {(() => {
-                              const formattedDate = format(appointmentDate, "dd 'de' MMMM", { locale: ptBR });
-                              return formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
-                            })()}
-                          </span>
-                          <span className="text-secondary-foreground text-sm">
-                            às {format(appointmentDate, "HH:mm")}
-                          </span>
-                          <span className={`text-xs px-1.5 py-0.5 rounded-full bg-secondary/30 ${dateStatus.className}`}>
+                return (
+                  <Card
+                    key={appointment.id}
+                    className="transition-shadow hover:shadow-md"
+                  >
+                    <CardContent className="p-3">
+                      <div className="space-y-2">
+                        {/* Status centralizado no topo */}
+                        <div className="flex justify-center">
+                          <span
+                            className={`bg-secondary/30 rounded-full px-2 py-1 text-xs font-medium ${dateStatus.className}`}
+                          >
                             {dateStatus.label}
                           </span>
                         </div>
 
+                        {/* Data e hora centralizadas com ações na mesma linha */}
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex-1"></div>
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="text-muted-foreground h-4 w-4 flex-shrink-0" />
+                            <span className="text-primary font-medium">
+                              {format(appointmentDate, "dd/MM")}
+                            </span>
+                            <span className="text-secondary-foreground font-medium">
+                              {format(appointmentDate, "HH:mm")}
+                            </span>
+                          </div>
+                          <div className="flex flex-1 justify-end">
+                            {!isDoctor && (
+                              <AppointmentActions
+                                appointment={appointment}
+                                onEdit={onEdit}
+                              />
+                            )}
+                            {isDoctor && (
+                              <div className="text-muted-foreground text-xs italic">
+                                Via admin
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
                         {/* Paciente */}
                         <div className="flex items-center gap-1.5">
-                          <User className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span className="font-medium text-primary text-sm">
+                          <User className="h-4 w-4 flex-shrink-0 text-blue-500 dark:text-blue-400" />
+                          <span className="truncate text-sm font-semibold text-blue-700 dark:text-blue-300">
                             {appointment.patient.name}
                           </span>
-                          {appointment.patient.phoneNumber && (
-                            <span className="text-xs text-muted-foreground">
-                              • {appointment.patient.phoneNumber}
-                            </span>
-                          )}
                         </div>
 
                         {/* Médico e especialidade */}
                         <div className="flex items-center gap-1.5">
-                          <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span className="text-primary text-sm">
-                            Dr(a). {appointment.doctor.name}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            • {appointment.doctor.specialty}
-                          </span>
-                        </div>
-
-                        {/* Valor */}
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-base font-semibold text-emerald-600 dark:text-emerald-400">
-                            {new Intl.NumberFormat("pt-BR", {
-                              style: "currency",
-                              currency: "BRL",
-                            }).format(price)}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Status e ações */}
-                      <div className="flex flex-col items-end gap-2">
-                        {getStatusBadge(appointment.status || 'pending')}
-                        {!isDoctor && (
-                          <AppointmentActions appointment={appointment} onEdit={onEdit} />
-                        )}
-                        {isDoctor && (
-                          <div className="text-xs text-muted-foreground italic mt-1">
-                            Edição via administrador
+                          <Stethoscope className="h-4 w-4 flex-shrink-0 text-blue-500 dark:text-blue-400" />
+                          <div className="flex min-w-0 flex-col">
+                            <span className="truncate text-sm font-medium text-blue-700 dark:text-blue-300">
+                              Dr(a). {appointment.doctor.name}
+                            </span>
+                            <span className="truncate text-xs text-blue-600 dark:text-blue-400">
+                              {appointment.doctor.specialty}
+                            </span>
                           </div>
-                        )}
+                        </div>
+
+                        {/* Espaçamento antes do status */}
+                        <div className="pt-2">
+                          {/* Status */}
+                          <div className="flex justify-center">
+                            {getStatusBadge(appointment.status || "pending")}
+                          </div>
+
+                          {/* Valor centralizado */}
+                          <div className="flex justify-center pt-1.5">
+                            <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                              {new Intl.NumberFormat("pt-BR", {
+                                style: "currency",
+                                currency: "BRL",
+                              }).format(price)}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        ),
+      )}
     </div>
   );
 }

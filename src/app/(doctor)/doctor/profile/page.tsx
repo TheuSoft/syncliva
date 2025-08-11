@@ -10,6 +10,9 @@ import { doctorsTable } from "@/db/schema";
 import { formatCurrencyInCents } from "@/helpers/currency";
 import { auth } from "@/lib/auth";
 
+// Forçar renderização dinâmica devido ao uso de headers()
+export const dynamic = 'force-dynamic';
+
 export default async function DoctorProfile() {
   const session = await auth.api.getSession({
     headers: await headers(),

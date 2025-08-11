@@ -9,7 +9,7 @@ import {
   Mail,
   Phone,
   Shield,
-  User,
+  Stethoscope,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -149,7 +149,7 @@ export function ResetDoctorPasswordDialog({
 
                   <div className="bg-muted/30 space-y-3 rounded-lg border p-3">
                     <div className="flex items-center gap-2 text-sm">
-                      <User className="text-muted-foreground h-4 w-4" />
+                      <Stethoscope className="text-muted-foreground h-4 w-4" />
                       <span className="font-medium">Nome:</span>
                       <span>{doctor.name}</span>
                     </div>

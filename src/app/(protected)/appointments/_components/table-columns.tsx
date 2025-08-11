@@ -49,7 +49,7 @@ const ActionsCell = ({ appointment, onEdit }: ActionsCellProps) => {
       });
 
       if (result.success) {
-        toast.success("Agendamento confirmado com sucesso!");
+        toast.success("Agendamento pago com sucesso!");
         console.log(`✅ Agendamento ${appointment.id} confirmado com sucesso.`);
       } else {
         setErrorMessage(result.message);
@@ -94,12 +94,13 @@ const ActionsCell = ({ appointment, onEdit }: ActionsCellProps) => {
           <DropdownMenuLabel>Ações</DropdownMenuLabel>
           <DropdownMenuSeparator />
 
-          {appointment.status !== "canceled" && appointment.status !== "confirmed" && (
-            <DropdownMenuItem onClick={handleEdit} disabled={isPending}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Editar agendamento
-            </DropdownMenuItem>
-          )}
+          {appointment.status !== "canceled" &&
+            appointment.status !== "confirmed" && (
+              <DropdownMenuItem onClick={handleEdit} disabled={isPending}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Editar agendamento
+              </DropdownMenuItem>
+            )}
 
           {appointment.status === "pending" && (
             <>
@@ -108,7 +109,7 @@ const ActionsCell = ({ appointment, onEdit }: ActionsCellProps) => {
                 disabled={isPending}
                 className="text-green-600"
               >
-                ✓ Confirmar agendamento
+                ✓ Marcar como pago
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={handleCancel}
@@ -192,21 +193,33 @@ export const createAppointmentsTableColumns = (
     id: "patient-name",
     header: "Paciente",
     accessorFn: (row) => row.patient.name,
-    cell: ({ row }) => row.original.patient.name,
+    cell: ({ row }) => (
+      <span className="font-medium text-blue-700 dark:text-blue-300">
+        {row.original.patient.name}
+      </span>
+    ),
     enableSorting: true,
   },
   {
     id: "doctor-name",
     header: "Médico",
     accessorFn: (row) => row.doctor.name,
-    cell: ({ row }) => row.original.doctor.name,
+    cell: ({ row }) => (
+      <span className="font-medium text-blue-700 dark:text-blue-300">
+        {row.original.doctor.name}
+      </span>
+    ),
     enableSorting: true,
   },
   {
     id: "doctor-specialty",
     header: "Especialidade",
     accessorFn: (row) => row.doctor.specialty,
-    cell: ({ row }) => row.original.doctor.specialty,
+    cell: ({ row }) => (
+      <span className="text-sm text-blue-600 dark:text-blue-400">
+        {row.original.doctor.specialty}
+      </span>
+    ),
     enableSorting: true,
   },
   {
@@ -236,7 +249,7 @@ export const createAppointmentsTableColumns = (
           className: "bg-yellow-100 text-yellow-800 border-yellow-200",
         },
         confirmed: {
-          label: "Confirmado",
+          label: "Agendamento pago",
           className: "bg-green-100 text-green-800 border-green-200",
         },
         canceled: {

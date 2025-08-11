@@ -25,7 +25,10 @@ interface AppointmentActionsProps {
   onEdit: (appointment: AppointmentWithRelations) => void;
 }
 
-export function AppointmentActions({ appointment, onEdit }: AppointmentActionsProps) {
+export function AppointmentActions({
+  appointment,
+  onEdit,
+}: AppointmentActionsProps) {
   const [isPending, startTransition] = useTransition();
 
   // Estados para diferentes dialogs
@@ -44,7 +47,7 @@ export function AppointmentActions({ appointment, onEdit }: AppointmentActionsPr
       });
 
       if (result.success) {
-        toast.success("Agendamento confirmado com sucesso!");
+        toast.success("Agendamento marcado como pago!");
         console.log(`✅ Agendamento ${appointment.id} confirmado com sucesso.`);
       } else {
         setErrorMessage(result.message);
@@ -89,12 +92,13 @@ export function AppointmentActions({ appointment, onEdit }: AppointmentActionsPr
           <DropdownMenuLabel>Ações</DropdownMenuLabel>
           <DropdownMenuSeparator />
 
-          {appointment.status !== "canceled" && appointment.status !== "confirmed" && (
-            <DropdownMenuItem onClick={handleEdit} disabled={isPending}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Editar agendamento
-            </DropdownMenuItem>
-          )}
+          {appointment.status !== "canceled" &&
+            appointment.status !== "confirmed" && (
+              <DropdownMenuItem onClick={handleEdit} disabled={isPending}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Editar agendamento
+              </DropdownMenuItem>
+            )}
 
           {appointment.status === "pending" && (
             <>
@@ -103,7 +107,7 @@ export function AppointmentActions({ appointment, onEdit }: AppointmentActionsPr
                 disabled={isPending}
                 className="text-green-600"
               >
-                ✓ Confirmar agendamento
+                ✓ Marcar como pago
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={handleCancel}

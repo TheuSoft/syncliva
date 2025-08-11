@@ -6,7 +6,6 @@ import {
   Mail,
   Stethoscope,
   Trash2,
-  User,
   UserX,
 } from "lucide-react";
 import { useState } from "react";
@@ -144,7 +143,7 @@ export function DeleteDoctorConfirmationDialog({
 
               <div className="bg-muted/30 space-y-3 rounded-lg border p-3">
                 <div className="flex items-center gap-2 text-sm">
-                  <User className="text-muted-foreground h-4 w-4" />
+                  <Stethoscope className="text-muted-foreground h-4 w-4" />
                   <span className="font-medium">Nome:</span>
                   <span>{doctor.name}</span>
                 </div>

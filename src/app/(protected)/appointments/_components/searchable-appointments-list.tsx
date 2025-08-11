@@ -2,11 +2,17 @@
 
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useMemo,useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { AppointmentWithRelations } from "@/types/appointments";
 
 import { AppointmentsTimeline } from "./appointments-timeline";
@@ -43,7 +49,7 @@ const SearchableAppointmentsList = ({
   patients,
   doctors,
   doctorId,
-  isDoctor = false
+  isDoctor = false,
 }: SearchableAppointmentsListProps) => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
@@ -56,8 +62,11 @@ const SearchableAppointmentsList = ({
 
   // Calcular meses disponíveis dos agendamentos agrupados por ano
   const availableMonthsByYear = useMemo(() => {
-    const monthsMap = new Map<string, { key: string; label: string; year: string }>();
-    
+    const monthsMap = new Map<
+      string,
+      { key: string; label: string; year: string }
+    >();
+
     initialAppointments.forEach((appointment) => {
       const appointmentDate = new Date(appointment.date);
       const monthKey = format(appointmentDate, "yyyy-MM");
@@ -65,25 +74,30 @@ const SearchableAppointmentsList = ({
       // Formatar com primeira letra maiúscula
       let monthLabel = format(appointmentDate, "MMMM", { locale: ptBR });
       monthLabel = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
-      
+
       monthsMap.set(monthKey, { key: monthKey, label: monthLabel, year });
     });
 
     const months = Array.from(monthsMap.values());
-    
+
     // Agrupar por ano
-    const groupedByYear = months.reduce((acc, month) => {
-      if (!acc[month.year]) {
-        acc[month.year] = [];
-      }
-      acc[month.year].push(month);
-      return acc;
-    }, {} as Record<string, { key: string; label: string; year: string }[]>);
+    const groupedByYear = months.reduce(
+      (acc, month) => {
+        if (!acc[month.year]) {
+          acc[month.year] = [];
+        }
+        acc[month.year].push(month);
+        return acc;
+      },
+      {} as Record<string, { key: string; label: string; year: string }[]>,
+    );
 
     // Ordenar anos (mais recente primeiro) e meses dentro de cada ano
-    const sortedYears = Object.keys(groupedByYear).sort((a, b) => b.localeCompare(a));
-    
-    sortedYears.forEach(year => {
+    const sortedYears = Object.keys(groupedByYear).sort((a, b) =>
+      b.localeCompare(a),
+    );
+
+    sortedYears.forEach((year) => {
       groupedByYear[year].sort((a, b) => b.key.localeCompare(a.key));
     });
 
@@ -95,13 +109,13 @@ const SearchableAppointmentsList = ({
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
 
-    const matchesMonth = selectedMonth === "all" 
-      ? true 
-      : format(new Date(appointment.date), "yyyy-MM") === selectedMonth;
-      
-    const matchesDoctor = selectedDoctor === "all"
-      ? true
-      : appointment.doctorId === selectedDoctor;
+    const matchesMonth =
+      selectedMonth === "all"
+        ? true
+        : format(new Date(appointment.date), "yyyy-MM") === selectedMonth;
+
+    const matchesDoctor =
+      selectedDoctor === "all" ? true : appointment.doctorId === selectedDoctor;
 
     return matchesSearch && matchesMonth && matchesDoctor;
   });
@@ -124,7 +138,7 @@ const SearchableAppointmentsList = ({
     <div className="space-y-4">
       {/* Filtros */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-col md:flex-row md:gap-4 gap-2">
+        <div className="flex flex-col gap-2 md:flex-row md:gap-4">
           <div className="flex flex-col gap-2">
             <p className="text-sm font-medium">Filtrar por mês:</p>
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
@@ -135,20 +149,22 @@ const SearchableAppointmentsList = ({
                 <SelectItem value="all">Todos os meses</SelectItem>
                 {availableMonthsByYear.sortedYears.map((year) => (
                   <div key={year}>
-                    <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
+                    <div className="text-muted-foreground px-2 py-1.5 text-sm font-semibold">
                       {year}
                     </div>
-                    {availableMonthsByYear.groupedByYear[year].map(({ key, label }) => (
-                      <SelectItem key={key} value={key} className="pl-6">
-                        {label}
-                      </SelectItem>
-                    ))}
+                    {availableMonthsByYear.groupedByYear[year].map(
+                      ({ key, label }) => (
+                        <SelectItem key={key} value={key} className="pl-6">
+                          {label}
+                        </SelectItem>
+                      ),
+                    )}
                   </div>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          
+
           {/* Seletor de médicos - somente para admin */}
           {!isDoctor && (
             <div className="flex flex-col gap-2">
@@ -161,7 +177,9 @@ const SearchableAppointmentsList = ({
                   <SelectItem value="all">Todos os médicos</SelectItem>
                   {doctors.map((doctor) => (
                     <SelectItem key={doctor.id} value={doctor.id}>
-                      {doctor.name} - {doctor.specialty}
+                      <span className="font-medium text-blue-700 dark:text-blue-300">
+                        {doctor.name} - {doctor.specialty}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -181,7 +199,9 @@ const SearchableAppointmentsList = ({
           className="max-w-sm"
         />
 
-        {(searchTerm || selectedMonth !== "all" || selectedDoctor !== "all") && (
+        {(searchTerm ||
+          selectedMonth !== "all" ||
+          selectedDoctor !== "all") && (
           <Button variant="outline" onClick={clearFilters}>
             Limpar filtros
           </Button>
@@ -194,24 +214,28 @@ const SearchableAppointmentsList = ({
           Mostrando {filteredAppointments.length} de{" "}
           {initialAppointments.length} agendamentos
           {searchTerm && ` • Busca: "${searchTerm}"`}
-          {selectedMonth !== "all" && (() => {
-            // Encontrar o mês selecionado em todos os anos
-            for (const year of availableMonthsByYear.sortedYears) {
-              const month = availableMonthsByYear.groupedByYear[year].find(m => m.key === selectedMonth);
-              if (month) {
-                return ` • Mês: ${month.label} de ${month.year}`;
+          {selectedMonth !== "all" &&
+            (() => {
+              // Encontrar o mês selecionado em todos os anos
+              for (const year of availableMonthsByYear.sortedYears) {
+                const month = availableMonthsByYear.groupedByYear[year].find(
+                  (m) => m.key === selectedMonth,
+                );
+                if (month) {
+                  return ` • Mês: ${month.label} de ${month.year}`;
+                }
               }
-            }
-            return ` • Mês: ${selectedMonth}`;
-          })()}
-          {selectedDoctor !== "all" && (() => {
-            // Encontrar o médico selecionado
-            const doctor = doctors.find(d => d.id === selectedDoctor);
-            if (doctor) {
-              return ` • Médico: ${doctor.name}`;
-            }
-            return ` • Médico: ID ${selectedDoctor}`;
-          })()}
+              return ` • Mês: ${selectedMonth}`;
+            })()}
+          {selectedDoctor !== "all" &&
+            (() => {
+              // Encontrar o médico selecionado
+              const doctor = doctors.find((d) => d.id === selectedDoctor);
+              if (doctor) {
+                return ` • Médico: ${doctor.name}`;
+              }
+              return ` • Médico: ID ${selectedDoctor}`;
+            })()}
         </p>
       </div>
 

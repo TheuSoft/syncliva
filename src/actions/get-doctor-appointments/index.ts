@@ -1,38 +1,10 @@
 import { eq } from "drizzle-orm";
-import { headers } from "next/headers";
 
 import { db } from "@/db";
-import { appointmentsTable, doctorsTable, patientsTable, usersTable } from "@/db/schema";
-import { auth } from "@/lib/auth";
+import { appointmentsTable, doctorsTable, patientsTable } from "@/db/schema";
 
-export async function getDoctorAppointments() {
+export async function getDoctorAppointments(doctorId: string) {
   try {
-    // Obter a sessão do médico
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-
-    if (!session?.user) {
-      throw new Error("Usuário não autenticado");
-    }
-
-    if (session.user.role !== "doctor") {
-      throw new Error("Usuário não é um médico");
-    }
-
-    // Buscar o médico pelo userId
-    const user = await db
-      .select()
-      .from(usersTable)
-      .where(eq(usersTable.id, session.user.id))
-      .limit(1);
-
-    if (!user.length || !user[0].doctorId) {
-      throw new Error("Médico não encontrado");
-    }
-
-    const doctorId = user[0].doctorId;
-
     // Buscar os agendamentos do médico com dados do paciente
     const appointments = await db
       .select({

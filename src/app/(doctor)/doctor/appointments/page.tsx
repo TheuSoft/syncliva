@@ -1,13 +1,49 @@
+import { headers } from "next/headers";
+
 import { getDoctorAppointments } from "@/actions/get-doctor-appointments";
 import SearchableAppointmentsList from "@/app/(protected)/appointments/_components/searchable-appointments-list";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageContainer } from "@/components/ui/page-container";
+import { auth } from "@/lib/auth";
 import type { AppointmentWithRelations } from "@/types/appointments";
+
+// Forçar renderização dinâmica devido ao uso de headers()
+export const dynamic = 'force-dynamic';
 
 // Removido funções não utilizadas
 
 export default async function DoctorAppointments() {
-  const result = await getDoctorAppointments();
+  // Obter a sessão do médico (já validada no layout)
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session?.user || !session.user.doctorId) {
+    return (
+      <PageContainer>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Pacientes Marcados
+            </h1>
+            <p className="text-muted-foreground">
+              Visualize e gerencie seus pacientes agendados
+            </p>
+          </div>
+          
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <p className="text-red-500">
+                Erro: Médico não encontrado
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </PageContainer>
+    );
+  }
+
+  const result = await getDoctorAppointments(session.user.doctorId);
 
   if (!result.success) {
     return (

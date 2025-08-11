@@ -2,7 +2,7 @@
 
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { AlertTriangle, Calendar, Clock, User, UserX } from "lucide-react";
+import { AlertTriangle, Calendar, Clock, Stethoscope, User } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -93,14 +93,18 @@ export function CancelConfirmationDialog({
               <h4 className="text-sm font-medium">Detalhes:</h4>
               <div className="bg-muted/30 space-y-2 rounded-lg border p-3">
                 <div className="flex items-center gap-2 text-sm">
-                  <User className="text-muted-foreground h-4 w-4" />
+                  <User className="h-4 w-4 text-blue-500 dark:text-blue-400" />
                   <span className="font-medium">Paciente:</span>
-                  <span>{appointment.patient.name}</span>
+                  <span className="font-medium text-blue-700 dark:text-blue-300">
+                    {appointment.patient.name}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
-                  <UserX className="text-muted-foreground h-4 w-4" />
+                  <Stethoscope className="h-4 w-4 text-blue-500 dark:text-blue-400" />
                   <span className="font-medium">Médico:</span>
-                  <span>{appointment.doctor.name}</span>
+                  <span className="font-medium text-blue-700 dark:text-blue-300">
+                    {appointment.doctor.name}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <Calendar className="text-muted-foreground h-4 w-4" />
