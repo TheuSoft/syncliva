@@ -8,9 +8,10 @@ import {
   User,
   Users,
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+
+import { Logo } from "@/components/logo";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -75,7 +76,7 @@ export function DoctorSidebar() {
     <Sidebar>
       <SidebarHeader className="border-b px-4 py-4 h-16">
         <div className="flex items-center">
-          <Image src="/logo.svg" alt="Portal Médico" width={136} height={28} />
+          <Logo width={136} height={28} />
         </div>
       </SidebarHeader>
       <SidebarContent>
