@@ -16,7 +16,7 @@ export default function DoctorRegisterForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get("token");
-  
+
   const [doctorInfo, setDoctorInfo] = useState<{
     id: string;
     name: string;
@@ -30,34 +30,38 @@ export default function DoctorRegisterForm() {
     confirmPassword: "",
   });
 
-  const { execute: executeValidateInvite, isExecuting: isValidating } = useAction(validateInvite, {
-    onSuccess: ({ data }) => {
-      if (data?.success) {
-        setDoctorInfo(data.doctor);
-        setFormData(prev => ({
-          ...prev,
-          name: data.doctor?.name || "",
-          email: data.doctor?.email || "",
-        }));
-      }
-    },
-    onError: ({ error }) => {
-      toast.error(error.serverError || "Token inválido ou expirado");
-      router.push("/authentication");
-    },
-  });
+  const { execute: executeValidateInvite, isExecuting: isValidating } =
+    useAction(validateInvite, {
+      onSuccess: ({ data }) => {
+        if (data?.success) {
+          setDoctorInfo(data.doctor);
+          setFormData((prev) => ({
+            ...prev,
+            name: data.doctor?.name || "",
+            email: data.doctor?.email || "",
+          }));
+        }
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || "Token inválido ou expirado");
+        router.push("/authentication");
+      },
+    });
 
-  const { execute: executeRegister, isExecuting: isRegistering } = useAction(registerDoctor, {
-    onSuccess: ({ data }) => {
-      if (data?.success) {
-        toast.success(data.message);
-        router.push("/authentication?tab=signin");
-      }
+  const { execute: executeRegister, isExecuting: isRegistering } = useAction(
+    registerDoctor,
+    {
+      onSuccess: ({ data }) => {
+        if (data?.success) {
+          toast.success(data.message);
+          router.push("/authentication?tab=signin");
+        }
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || "Erro ao registrar");
+      },
     },
-    onError: ({ error }) => {
-      toast.error(error.serverError || "Erro ao registrar");
-    },
-  });
+  );
 
   useEffect(() => {
     if (!token) {
@@ -94,11 +98,11 @@ export default function DoctorRegisterForm() {
 
   if (isValidating) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center">
         <Card className="w-[400px]">
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            <p className="mt-4 text-muted-foreground">Validando convite...</p>
+            <div className="border-primary h-8 w-8 animate-spin rounded-full border-b-2"></div>
+            <p className="text-muted-foreground mt-4">Validando convite...</p>
           </CardContent>
         </Card>
       </div>
@@ -110,14 +114,15 @@ export default function DoctorRegisterForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50">
       <Card className="w-[500px]">
         <CardHeader>
-          <CardTitle className="text-2xl text-center">
+          <CardTitle className="text-center text-2xl">
             Complete seu Registro
           </CardTitle>
-          <p className="text-center text-muted-foreground">
-            Bem-vindo, Dr. {doctorInfo.name}! Complete seu registro para acessar o sistema.
+          <p className="text-muted-foreground text-center">
+            Bem-vindo, Dr. {doctorInfo.name}! Complete seu registro para acessar
+            o sistema.
           </p>
         </CardHeader>
         <CardContent>
@@ -128,7 +133,9 @@ export default function DoctorRegisterForm() {
                 <Input
                   id="name"
                   value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, name: e.target.value }))
+                  }
                   required
                 />
               </div>
@@ -138,7 +145,9 @@ export default function DoctorRegisterForm() {
                   id="email"
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, email: e.target.value }))
+                  }
                   required
                 />
               </div>
@@ -161,7 +170,12 @@ export default function DoctorRegisterForm() {
                   id="password"
                   type="password"
                   value={formData.password}
-                  onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      password: e.target.value,
+                    }))
+                  }
                   required
                   minLength={6}
                 />
@@ -172,18 +186,19 @@ export default function DoctorRegisterForm() {
                   id="confirmPassword"
                   type="password"
                   value={formData.confirmPassword}
-                  onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      confirmPassword: e.target.value,
+                    }))
+                  }
                   required
                   minLength={6}
                 />
               </div>
             </div>
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isRegistering}
-            >
+            <Button type="submit" className="w-full" disabled={isRegistering}>
               {isRegistering ? "Registrando..." : "Completar Registro"}
             </Button>
           </form>

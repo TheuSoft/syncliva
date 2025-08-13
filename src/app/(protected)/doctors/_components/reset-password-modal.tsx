@@ -63,7 +63,7 @@ export function ResetDoctorPasswordDialog({
       if (result?.data?.success) {
         setTemporaryPassword(result.data.temporaryPassword);
         setStep("result");
-        
+
         toast.success("Senha temporária gerada!", {
           description: `Nova senha criada para Dr(a). ${doctor.name}`,
         });
@@ -136,8 +136,9 @@ export function ResetDoctorPasswordDialog({
                         Nova senha temporária
                       </p>
                       <p className="text-xs text-orange-700">
-                        Uma senha temporária será gerada. Comunique ao médico por telefone ou WhatsApp
-                        e oriente-o a alterar a senha no primeiro acesso.
+                        Uma senha temporária será gerada. Comunique ao médico
+                        por telefone ou WhatsApp e oriente-o a alterar a senha
+                        no primeiro acesso.
                       </p>
                     </div>
                   </div>
@@ -166,7 +167,11 @@ export function ResetDoctorPasswordDialog({
                       <span className="text-sm font-medium">Status:</span>
                       <Badge
                         variant={isRegistered ? "default" : "secondary"}
-                        className={isRegistered ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}
+                        className={
+                          isRegistered
+                            ? "bg-green-100 text-green-800"
+                            : "bg-yellow-100 text-yellow-800"
+                        }
                       >
                         {isRegistered ? "Cadastrado" : "Pendente"}
                       </Badge>
@@ -193,7 +198,11 @@ export function ResetDoctorPasswordDialog({
             </AlertDialogDescription>
 
             <AlertDialogFooter className="gap-2">
-              <Button variant="outline" onClick={handleClose} disabled={isLoading}>
+              <Button
+                variant="outline"
+                onClick={handleClose}
+                disabled={isLoading}
+              >
                 Cancelar
               </Button>
               <Button
@@ -248,12 +257,12 @@ export function ResetDoctorPasswordDialog({
                     >
                       {showPassword ? (
                         <>
-                          <EyeOff className="h-4 w-4 mr-2" />
+                          <EyeOff className="mr-2 h-4 w-4" />
                           Ocultar
                         </>
                       ) : (
                         <>
-                          <Eye className="h-4 w-4 mr-2" />
+                          <Eye className="mr-2 h-4 w-4" />
                           Mostrar
                         </>
                       )}
@@ -266,7 +275,7 @@ export function ResetDoctorPasswordDialog({
                         type={showPassword ? "text" : "password"}
                         value={temporaryPassword}
                         readOnly
-                        className="font-mono text-center text-lg tracking-wider"
+                        className="text-center font-mono text-lg tracking-wider"
                       />
                       <Button
                         variant="outline"
@@ -290,8 +299,10 @@ export function ResetDoctorPasswordDialog({
                       <p className="text-sm font-medium text-blue-800">
                         Próximos passos:
                       </p>
-                      <ul className="text-xs text-blue-700 space-y-1">
-                        <li>• Ligue ou envie WhatsApp para Dr(a). {doctor.name}</li>
+                      <ul className="space-y-1 text-xs text-blue-700">
+                        <li>
+                          • Ligue ou envie WhatsApp para Dr(a). {doctor.name}
+                        </li>
                         <li>• Informe a senha temporária</li>
                         <li>• Oriente o login em: /authentication</li>
                         <li>• Médico será obrigado a criar nova senha</li>

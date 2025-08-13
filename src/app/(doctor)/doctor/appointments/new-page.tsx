@@ -8,7 +8,7 @@ import { formatCurrencyInCents } from "@/helpers/currency";
 import { auth } from "@/lib/auth";
 
 // Forçar renderização dinâmica devido ao uso de headers()
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 function getStatusColor(status: string) {
   switch (status) {
@@ -54,12 +54,10 @@ export default async function DoctorAppointments() {
               Visualize e gerencie seus pacientes agendados
             </p>
           </div>
-          
+
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <p className="text-red-500">
-                Erro: Médico não encontrado
-              </p>
+              <p className="text-red-500">Erro: Médico não encontrado</p>
             </CardContent>
           </Card>
         </div>

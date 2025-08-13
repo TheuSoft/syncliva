@@ -8,7 +8,7 @@ import { auth } from "@/lib/auth";
 import type { AppointmentWithRelations } from "@/types/appointments";
 
 // Forçar renderização dinâmica devido ao uso de headers()
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 // Removido funções não utilizadas
 
@@ -30,12 +30,10 @@ export default async function DoctorAppointments() {
               Visualize e gerencie seus pacientes agendados
             </p>
           </div>
-          
+
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <p className="text-red-500">
-                Erro: Médico não encontrado
-              </p>
+              <p className="text-red-500">Erro: Médico não encontrado</p>
             </CardContent>
           </Card>
         </div>
@@ -57,12 +55,10 @@ export default async function DoctorAppointments() {
               Visualize e gerencie seus pacientes agendados
             </p>
           </div>
-          
+
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <p className="text-red-500">
-                Erro: {result.error}
-              </p>
+              <p className="text-red-500">Erro: {result.error}</p>
             </CardContent>
           </Card>
         </div>
@@ -71,10 +67,11 @@ export default async function DoctorAppointments() {
   }
 
   const appointments = result.appointments;
-  const doctorId = appointments.length > 0 ? appointments[0].doctor.id : undefined;
+  const doctorId =
+    appointments.length > 0 ? appointments[0].doctor.id : undefined;
 
   // Extrair pacientes e médicos para o modal de edição
-  const patients = appointments.map(app => ({
+  const patients = appointments.map((app) => ({
     id: app.patient.id,
     name: app.patient.name,
     email: app.patient.email,
@@ -82,29 +79,31 @@ export default async function DoctorAppointments() {
     sex: app.patient.sex,
   }));
 
-  const doctors = appointments.map(app => ({
+  const doctors = appointments.map((app) => ({
     id: app.doctor.id,
     name: app.doctor.name,
     specialty: app.doctor.specialty,
     appointmentPriceInCents: app.appointmentPriceInCents,
     availableFromWeekDay: 0, // Valor padrão
-    availableToWeekDay: 6,   // Valor padrão
+    availableToWeekDay: 6, // Valor padrão
   }));
 
   // Converter o formato do resultado para o formato esperado por AppointmentWithRelations
-  const appointmentsFormatted: AppointmentWithRelations[] = appointments.map(app => ({
-    ...app,
-    clinicId: "", // Adicionar propriedades necessárias que estão ausentes no resultado da API
-    patientId: app.patient.id,
-    doctorId: app.doctor.id,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    // Garantir que doctor tenha todas as propriedades necessárias
-    doctor: {
-      ...app.doctor,
-      appointmentPriceInCents: app.appointmentPriceInCents // Usar o valor do agendamento como fallback
-    }
-  }));
+  const appointmentsFormatted: AppointmentWithRelations[] = appointments.map(
+    (app) => ({
+      ...app,
+      clinicId: "", // Adicionar propriedades necessárias que estão ausentes no resultado da API
+      patientId: app.patient.id,
+      doctorId: app.doctor.id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      // Garantir que doctor tenha todas as propriedades necessárias
+      doctor: {
+        ...app.doctor,
+        appointmentPriceInCents: app.appointmentPriceInCents, // Usar o valor do agendamento como fallback
+      },
+    }),
+  );
 
   return (
     <PageContainer>
@@ -114,14 +113,15 @@ export default async function DoctorAppointments() {
             Pacientes Marcados
           </h1>
           <p className="text-muted-foreground">
-            Visualize e gerencie seus pacientes agendados ({appointments.length} agendamento{appointments.length !== 1 ? 's' : ''})
+            Visualize e gerencie seus pacientes agendados ({appointments.length}{" "}
+            agendamento{appointments.length !== 1 ? "s" : ""})
           </p>
         </div>
-        
+
         {/* Usar o componente SearchableAppointmentsList com isDoctor=true */}
-        <SearchableAppointmentsList 
+        <SearchableAppointmentsList
           initialAppointments={appointmentsFormatted}
-          patients={patients} 
+          patients={patients}
           doctors={doctors}
           doctorId={doctorId}
           isDoctor={true}
@@ -133,8 +133,9 @@ export default async function DoctorAppointments() {
               <p className="text-muted-foreground">
                 Nenhum agendamento encontrado
               </p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Seus pacientes marcados aparecerão aqui quando houver agendamentos
+              <p className="text-muted-foreground mt-2 text-sm">
+                Seus pacientes marcados aparecerão aqui quando houver
+                agendamentos
               </p>
             </CardContent>
           </Card>

@@ -26,7 +26,10 @@ export async function getDoctorAppointments(doctorId: string) {
         },
       })
       .from(appointmentsTable)
-      .innerJoin(patientsTable, eq(appointmentsTable.patientId, patientsTable.id))
+      .innerJoin(
+        patientsTable,
+        eq(appointmentsTable.patientId, patientsTable.id),
+      )
       .innerJoin(doctorsTable, eq(appointmentsTable.doctorId, doctorsTable.id))
       .where(eq(appointmentsTable.doctorId, doctorId))
       .orderBy(appointmentsTable.date);

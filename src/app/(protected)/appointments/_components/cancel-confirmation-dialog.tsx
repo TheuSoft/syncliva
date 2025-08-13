@@ -2,7 +2,13 @@
 
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { AlertTriangle, Calendar, Clock, Stethoscope, User } from "lucide-react";
+import {
+  AlertTriangle,
+  Calendar,
+  Clock,
+  Stethoscope,
+  User,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 

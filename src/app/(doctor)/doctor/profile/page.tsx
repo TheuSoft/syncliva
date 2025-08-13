@@ -11,7 +11,7 @@ import { formatCurrencyInCents } from "@/helpers/currency";
 import { auth } from "@/lib/auth";
 
 // Forçar renderização dinâmica devido ao uso de headers()
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export default async function DoctorProfile() {
   const session = await auth.api.getSession({
@@ -39,16 +39,20 @@ export default async function DoctorProfile() {
     .join("");
 
   const weekDays = [
-    "Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"
+    "Domingo",
+    "Segunda",
+    "Terça",
+    "Quarta",
+    "Quinta",
+    "Sexta",
+    "Sábado",
   ];
 
   return (
     <PageContainer>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Meu Perfil
-          </h1>
+          <h1 className="text-3xl font-bold tracking-tight">Meu Perfil</h1>
           <p className="text-muted-foreground">
             Visualize suas informações profissionais
           </p>
@@ -69,7 +73,9 @@ export default async function DoctorProfile() {
                 <div>
                   <h3 className="text-xl font-semibold">{doctor.name}</h3>
                   <p className="text-muted-foreground">{doctor.specialty}</p>
-                  <p className="text-sm text-muted-foreground">{doctor.email}</p>
+                  <p className="text-muted-foreground text-sm">
+                    {doctor.email}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -82,8 +88,9 @@ export default async function DoctorProfile() {
             <CardContent>
               <div className="space-y-2">
                 <p className="font-medium">{doctor.clinic?.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  Valor da consulta: {formatCurrencyInCents(doctor.appointmentPriceInCents)}
+                <p className="text-muted-foreground text-sm">
+                  Valor da consulta:{" "}
+                  {formatCurrencyInCents(doctor.appointmentPriceInCents)}
                 </p>
               </div>
             </CardContent>
@@ -97,9 +104,9 @@ export default async function DoctorProfile() {
               <div className="space-y-3">
                 <div>
                   <p className="text-sm font-medium">Dias da semana:</p>
-                  <div className="flex gap-2 mt-1">
+                  <div className="mt-1 flex gap-2">
                     <Badge variant="outline">
-                      {weekDays[doctor.availableFromWeekDay]} 
+                      {weekDays[doctor.availableFromWeekDay]}
                     </Badge>
                     <span>até</span>
                     <Badge variant="outline">
@@ -107,17 +114,13 @@ export default async function DoctorProfile() {
                     </Badge>
                   </div>
                 </div>
-                
+
                 <div>
                   <p className="text-sm font-medium">Horários:</p>
-                  <div className="flex gap-2 mt-1">
-                    <Badge variant="outline">
-                      {doctor.availableFromTime}
-                    </Badge>
+                  <div className="mt-1 flex gap-2">
+                    <Badge variant="outline">{doctor.availableFromTime}</Badge>
                     <span>às</span>
-                    <Badge variant="outline">
-                      {doctor.availableToTime}
-                    </Badge>
+                    <Badge variant="outline">{doctor.availableToTime}</Badge>
                   </div>
                 </div>
               </div>
@@ -138,15 +141,17 @@ export default async function DoctorProfile() {
                     <Badge variant="secondary">Pendente</Badge>
                   )}
                 </div>
-                
+
                 {doctor.registeredAt && (
-                  <p className="text-sm text-muted-foreground">
-                    Registrado em: {new Date(doctor.registeredAt).toLocaleDateString("pt-BR")}
+                  <p className="text-muted-foreground text-sm">
+                    Registrado em:{" "}
+                    {new Date(doctor.registeredAt).toLocaleDateString("pt-BR")}
                   </p>
                 )}
-                
-                <p className="text-sm text-muted-foreground">
-                  Cadastrado em: {new Date(doctor.createdAt).toLocaleDateString("pt-BR")}
+
+                <p className="text-muted-foreground text-sm">
+                  Cadastrado em:{" "}
+                  {new Date(doctor.createdAt).toLocaleDateString("pt-BR")}
                 </p>
               </div>
             </CardContent>

@@ -58,13 +58,15 @@ export function DeleteDoctorConfirmationDialog({
       const result = await deleteDoctor({ id: doctor.id });
 
       if (result?.data?.success) {
-        const appointmentsMsg = result.data.deletedAppointments > 0 
-          ? ` ${result.data.deletedAppointments} agendamento(s) foram removidos.`
-          : '';
-        const userMsg = result.data.deletedUsers > 0 
-          ? ' Acesso ao sistema foi revogado.'
-          : '';
-        
+        const appointmentsMsg =
+          result.data.deletedAppointments > 0
+            ? ` ${result.data.deletedAppointments} agendamento(s) foram removidos.`
+            : "";
+        const userMsg =
+          result.data.deletedUsers > 0
+            ? " Acesso ao sistema foi revogado."
+            : "";
+
         toast.success("Médico excluído permanentemente!", {
           description: `Dr(a). ${doctor.name} foi removido do sistema.${appointmentsMsg}${userMsg}`,
           action: {
@@ -131,7 +133,8 @@ export function DeleteDoctorConfirmationDialog({
                   </p>
                   <p className="text-xs text-red-700">
                     O médico será removido permanentemente do sistema.
-                    {isRegistered && " Todos os agendamentos e acesso ao dashboard serão removidos."}
+                    {isRegistered &&
+                      " Todos os agendamentos e acesso ao dashboard serão removidos."}
                   </p>
                 </div>
               </div>
@@ -165,14 +168,20 @@ export function DeleteDoctorConfirmationDialog({
                 <div className="flex items-center gap-2 text-sm">
                   <Calendar className="text-muted-foreground h-4 w-4" />
                   <span className="font-medium">Valor da consulta:</span>
-                  <span>R$ {(doctor.appointmentPriceInCents / 100).toFixed(2)}</span>
+                  <span>
+                    R$ {(doctor.appointmentPriceInCents / 100).toFixed(2)}
+                  </span>
                 </div>
 
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Status:</span>
                   <Badge
                     variant={isRegistered ? "default" : "secondary"}
-                    className={isRegistered ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}
+                    className={
+                      isRegistered
+                        ? "bg-green-100 text-green-800"
+                        : "bg-yellow-100 text-yellow-800"
+                    }
                   >
                     {isRegistered ? "Cadastrado" : "Pendente"}
                   </Badge>
@@ -189,7 +198,7 @@ export function DeleteDoctorConfirmationDialog({
                     <p className="text-sm font-medium text-orange-800">
                       Consequências da exclusão:
                     </p>
-                    <ul className="text-xs text-orange-700 space-y-1">
+                    <ul className="space-y-1 text-xs text-orange-700">
                       <li>• Todos os agendamentos serão cancelados</li>
                       <li>• Acesso ao dashboard será revogado</li>
                       <li>• Dados do médico serão removidos permanentemente</li>
