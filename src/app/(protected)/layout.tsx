@@ -9,7 +9,11 @@ import { AppSidebar } from "./_components/side-bar";
 import { GlobalTokenDialog } from "./doctors/_components/global-token-dialog";
 import { TokenDialogProvider } from "./doctors/_components/token-dialog-context";
 
-export default async function Layout({ children }: { children: React.ReactNode }) {
+export default async function Layout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
@@ -27,14 +31,12 @@ export default async function Layout({ children }: { children: React.ReactNode }
     <TokenDialogProvider>
       <SidebarProvider>
         <AppSidebar />
-        <main className="w-full min-h-screen bg-background">
-          <div className="flex items-center justify-between px-4 py-4 border-b h-16">
+        <main className="bg-background min-h-screen w-full">
+          <div className="bg-background sticky top-0 z-10 flex h-16 items-center justify-between border-b px-4 py-4">
             <SidebarTrigger />
             <ThemeToggle />
           </div>
-          <div className="p-4">
-            {children}
-          </div>
+          <div className="p-4">{children}</div>
         </main>
         <GlobalTokenDialog />
       </SidebarProvider>

@@ -1,18 +1,10 @@
 "use client";
 
-import {
-  FileText,
-  Home,
-  LogOut,
-  Pill,
-  User,
-  Users,
-} from "lucide-react";
+import { FileText, Home, LogOut, Pill, User, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 import { Logo } from "@/components/logo";
-
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -74,7 +66,7 @@ export function DoctorSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="border-b px-4 py-4 h-16">
+      <SidebarHeader className="h-16 border-b px-4 py-4">
         <div className="flex items-center">
           <Logo width={136} height={28} />
         </div>
@@ -110,9 +102,7 @@ export function DoctorSidebar() {
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="text-sm">
-                      Dr. {session.data?.user?.name}
-                    </p>
+                    <p className="text-sm">Dr. {session.data?.user?.name}</p>
                     <p className="text-muted-foreground text-sm">
                       {session.data?.user.email}
                     </p>

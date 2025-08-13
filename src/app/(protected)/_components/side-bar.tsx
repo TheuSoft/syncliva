@@ -6,13 +6,13 @@ import {
   LayoutDashboard,
   LogOut,
   Stethoscope,
+  User,
   UsersRound,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 import { Logo } from "@/components/logo";
-
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -79,7 +79,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="border-b px-4 py-4 h-16">
+      <SidebarHeader className="h-16 border-b px-4 py-4">
         <div className="flex items-center">
           <Logo width={136} height={28} />
         </div>
@@ -110,7 +110,9 @@ export function AppSidebar() {
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton size="lg">
                   <Avatar>
-                    <AvatarFallback>F</AvatarFallback>
+                    <AvatarFallback>
+                      {session.data?.user?.clinic?.name?.charAt(0) || "C"}
+                    </AvatarFallback>
                   </Avatar>
                   <div>
                     <p className="text-sm">
@@ -123,6 +125,12 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
+                <DropdownMenuItem asChild>
+                  <Link href="/clinic-settings">
+                    <User />
+                    Configurações da Clínica
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleSignOut}>
                   <LogOut />
                   Sair
