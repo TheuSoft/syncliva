@@ -1,5 +1,13 @@
-CREATE TYPE "public"."appointment_status" AS ENUM('pending', 'confirmed', 'canceled');--> statement-breakpoint
-CREATE TYPE "public"."patient_sex" AS ENUM('male', 'female');--> statement-breakpoint
+DO $$ BEGIN
+ CREATE TYPE "public"."appointment_status" AS ENUM('pending', 'confirmed', 'canceled');
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+ CREATE TYPE "public"."patient_sex" AS ENUM('male', 'female');
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;--> statement-breakpoint
 CREATE TABLE "accounts" (
 	"id" text PRIMARY KEY NOT NULL,
 	"account_id" text NOT NULL,
