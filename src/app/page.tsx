@@ -41,7 +41,7 @@ export default function Home() {
       <header className="bg-background/80 sticky top-0 z-50 border-b backdrop-blur-sm">
         <div className="container mx-auto flex h-16 items-center px-4">
           <div className="flex-1"></div>
-          <div className="flex justify-center">
+          <div className="flex items-center">
             <Logo width={136} height={28} />
           </div>
           <div className="flex flex-1 items-center justify-end gap-4">
