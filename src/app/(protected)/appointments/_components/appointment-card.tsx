@@ -185,7 +185,7 @@ export function AppointmentCard({
                       onConfirm(appointment);
                       setIsOpen(false);
                     }}
-                    className="flex-1 border-0 bg-green-600 text-white shadow-sm transition-all hover:bg-green-700 hover:shadow-md"
+                    className="flex-1 cursor-pointer border-0 bg-green-600 text-white shadow-sm transition-all hover:bg-green-700 hover:shadow-md"
                     title="Confirmar agendamento"
                   >
                     <Check className="h-4 w-4" />
@@ -200,7 +200,7 @@ export function AppointmentCard({
                       onEdit(appointment);
                       setIsOpen(false);
                     }}
-                    className="border-border dark:border-border hover:bg-accent dark:hover:bg-accent flex-1 shadow-sm transition-all hover:shadow-md"
+                    className="border-border dark:border-border hover:bg-accent dark:hover:bg-accent flex-1 cursor-pointer shadow-sm transition-all hover:shadow-md"
                     title="Editar agendamento"
                   >
                     <Edit className="h-4 w-4" />
@@ -215,7 +215,7 @@ export function AppointmentCard({
                       onCancel(appointment);
                       setIsOpen(false);
                     }}
-                    className="flex-1 border-red-200 text-red-600 shadow-sm transition-all hover:border-red-300 hover:bg-red-50 hover:shadow-md dark:border-red-800 dark:text-red-400 dark:hover:border-red-700 dark:hover:bg-red-950/20"
+                    className="flex-1 cursor-pointer border-red-200 text-red-600 shadow-sm transition-all hover:border-red-300 hover:bg-red-50 hover:shadow-md dark:border-red-800 dark:text-red-400 dark:hover:border-red-700 dark:hover:bg-red-950/20"
                     title="Cancelar agendamento"
                   >
                     <X className="h-4 w-4" />

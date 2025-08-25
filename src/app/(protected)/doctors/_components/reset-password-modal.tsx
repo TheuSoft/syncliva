@@ -281,7 +281,7 @@ export function ResetDoctorPasswordDialog({
                         variant="outline"
                         size="sm"
                         onClick={handleCopy}
-                        className="shrink-0"
+                        className="shrink-0 cursor-pointer"
                       >
                         <Copy className="h-4 w-4" />
                       </Button>
@@ -314,7 +314,7 @@ export function ResetDoctorPasswordDialog({
             </AlertDialogDescription>
 
             <AlertDialogFooter>
-              <Button onClick={handleClose} className="w-full">
+              <Button onClick={handleClose} className="w-full cursor-pointer">
                 Fechar
               </Button>
             </AlertDialogFooter>

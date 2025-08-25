@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { auth } from "@/lib/auth";
+import { SessionTimeoutProvider } from "@/providers/session-timeout-provider";
 
 import { DoctorSidebar } from "./_components/doctor-sidebar";
 
@@ -27,15 +28,17 @@ export default async function DoctorLayout({ children }: DoctorLayoutProps) {
   }
 
   return (
-    <SidebarProvider>
-      <DoctorSidebar />
-      <main className="bg-background min-h-screen w-full">
-        <div className="bg-background sticky top-0 z-10 flex h-16 items-center justify-between border-b px-4 py-4">
-          <SidebarTrigger />
-          <ThemeToggle />
-        </div>
-        <div className="p-4">{children}</div>
-      </main>
-    </SidebarProvider>
+    <SessionTimeoutProvider timeoutMinutes={30} warningMinutes={5}>
+      <SidebarProvider>
+        <DoctorSidebar />
+        <main className="bg-background min-h-screen w-full">
+          <div className="bg-background sticky top-0 z-10 flex h-16 items-center justify-between border-b px-4 py-4">
+            <SidebarTrigger />
+            <ThemeToggle />
+          </div>
+          <div className="p-4">{children}</div>
+        </main>
+      </SidebarProvider>
+    </SessionTimeoutProvider>
   );
 }

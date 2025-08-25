@@ -198,7 +198,11 @@ export default function DoctorRegisterForm() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={isRegistering}>
+            <Button
+              type="submit"
+              className="w-full cursor-pointer"
+              disabled={isRegistering}
+            >
               {isRegistering ? "Registrando..." : "Completar Registro"}
             </Button>
           </form>

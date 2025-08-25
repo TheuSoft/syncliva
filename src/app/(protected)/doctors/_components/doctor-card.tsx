@@ -91,7 +91,7 @@ const DoctorCard = ({ doctor }: DoctorCardProps) => {
                   variant="secondary"
                   className="h-4 border border-amber-200 bg-gradient-to-r from-amber-50 to-amber-100 px-1.5 py-0 text-xs text-amber-700"
                 >
-                  📧 Convidado
+                  Convidado
                 </Badge>
               )}
               {!hasInvite && !isRegistered && (
@@ -99,7 +99,7 @@ const DoctorCard = ({ doctor }: DoctorCardProps) => {
                   variant="outline"
                   className="border-muted-foreground/40 text-muted-foreground h-4 border-dashed px-1.5 py-0 text-xs"
                 >
-                  ⏳ Pendente
+                  Pendente
                 </Badge>
               )}
             </div>
@@ -144,7 +144,8 @@ const DoctorCard = ({ doctor }: DoctorCardProps) => {
         </div>
       </CardContent>
 
-      <CardFooter className="border-border/30 from-muted/10 to-muted/5 flex flex-col gap-1.5 border-t bg-gradient-to-r px-3 pt-2 pb-3">
+      <CardFooter className="border-border/20 from-muted/5 to-muted/10 flex flex-col gap-3 border-t bg-gradient-to-b px-4 pt-4 pb-4">
+        {/* Botão principal - Ver detalhes */}
         <Dialog
           open={isUpsertDoctorDialogOpen}
           onOpenChange={setIsUpsertDoctorDialogOpen}
@@ -152,9 +153,12 @@ const DoctorCard = ({ doctor }: DoctorCardProps) => {
           <DialogTrigger asChild>
             <Button
               size="sm"
-              className="from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 h-7 w-full transform border-0 bg-gradient-to-r text-xs text-white shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-md"
+              className="group from-primary via-primary to-primary/90 hover:shadow-primary/25 relative h-9 w-full cursor-pointer overflow-hidden bg-gradient-to-r text-sm font-medium text-white shadow-sm transition-all duration-300 hover:shadow-lg"
             >
-              👁️ Ver detalhes
+              <span className="relative z-10 flex items-center gap-2">
+                Ver Detalhes
+              </span>
+              <div className="from-primary/90 to-primary absolute inset-0 bg-gradient-to-r opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
             </Button>
           </DialogTrigger>
           <UpsertDoctorForm
@@ -167,9 +171,10 @@ const DoctorCard = ({ doctor }: DoctorCardProps) => {
             isOpen={isUpsertDoctorDialogOpen}
           />
         </Dialog>
+
         {/* Botões de convite - apenas se não estiver registrado */}
         {!isRegistered && (
-          <div className="w-full space-y-1">
+          <div className="w-full space-y-2">
             {!hasInvite ? (
               <InviteDoctorButton
                 doctorId={doctor.id}
@@ -177,22 +182,16 @@ const DoctorCard = ({ doctor }: DoctorCardProps) => {
                 disabled={false}
               />
             ) : (
-              <div className="flex w-full flex-col gap-1">
-                <div className="flex gap-1">
-                  <InviteDoctorButton
+              /* Se já tem convite, mostrar apenas opções de renovar ou ver */
+              <div className="flex w-full flex-col gap-2">
+                {doctor.email && (
+                  <ResendInviteButton
                     doctorId={doctor.id}
                     doctorName={doctor.name}
-                    disabled={true}
+                    doctorEmail={doctor.email}
+                    disabled={false}
                   />
-                  {doctor.email && (
-                    <ResendInviteButton
-                      doctorId={doctor.id}
-                      doctorName={doctor.name}
-                      doctorEmail={doctor.email}
-                      disabled={false}
-                    />
-                  )}
-                </div>
+                )}
                 {doctor.email && (
                   <UpdateInviteEmailButton
                     doctorId={doctor.id}
@@ -205,30 +204,39 @@ const DoctorCard = ({ doctor }: DoctorCardProps) => {
             )}
           </div>
         )}
-        <div className="flex w-full gap-1">
+
+        {/* Botões de ação secundários */}
+        <div className="flex w-full gap-2">
           {/* Botão de redefinir senha - apenas para médicos registrados */}
           {isRegistered && (
             <Button
               variant="outline"
               size="sm"
-              className="hover:bg-muted/20 text-foreground border-border/40 hover:border-border/60 h-7 flex-1 transform text-xs shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-md"
+              className="group relative h-8 flex-1 cursor-pointer overflow-hidden border-emerald-200 text-sm text-emerald-700 transition-all duration-300 hover:border-emerald-300 hover:bg-emerald-50 hover:shadow-md dark:border-emerald-800 dark:text-emerald-400 dark:hover:border-emerald-700 dark:hover:bg-emerald-950/30"
               onClick={handleResetPasswordClick}
             >
-              <KeyIcon className="mr-1 h-3 w-3" />
-              Senha
+              <span className="relative z-10 flex items-center gap-1.5">
+                <KeyIcon className="h-3.5 w-3.5" />
+                Redefinir Senha
+              </span>
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-50 to-emerald-100 opacity-0 transition-opacity duration-300 group-hover:opacity-100 dark:from-emerald-950/20 dark:to-emerald-950/40" />
             </Button>
           )}
 
           <Button
             variant="outline"
             size="sm"
-            className={`${isRegistered ? "flex-1" : "w-full"} h-7 transform border-red-200 text-xs text-red-600 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:border-red-300 hover:bg-red-50 hover:shadow-md dark:border-red-800 dark:text-red-400 dark:hover:border-red-700 dark:hover:bg-red-950/20`}
+            className={`group relative h-8 cursor-pointer overflow-hidden border-red-200 text-sm text-red-600 transition-all duration-300 hover:border-red-300 hover:bg-red-50 hover:shadow-md dark:border-red-800 dark:text-red-400 dark:hover:border-red-700 dark:hover:bg-red-950/30 ${isRegistered ? "flex-1" : "w-full"}`}
             onClick={handleDeleteDoctorClick}
           >
-            <TrashIcon className="mr-1 h-3 w-3" />
-            Deletar
+            <span className="relative z-10 flex items-center gap-1.5">
+              <TrashIcon className="h-3.5 w-3.5" />
+              Excluir
+            </span>
+            <div className="absolute inset-0 bg-gradient-to-r from-red-50 to-red-100 opacity-0 transition-opacity duration-300 group-hover:opacity-100 dark:from-red-950/20 dark:to-red-950/40" />
           </Button>
-        </div>{" "}
+        </div>
+
         <DeleteDoctorConfirmationDialog
           doctor={doctor}
           open={isDeleteDialogOpen}

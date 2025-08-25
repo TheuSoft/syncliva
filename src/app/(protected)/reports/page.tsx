@@ -450,7 +450,11 @@ export default function ReportsPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">&nbsp;</label>
-                <Button onClick={buscar} disabled={loading} className="w-full">
+                <Button
+                  onClick={buscar}
+                  disabled={loading}
+                  className="w-full cursor-pointer"
+                >
                   {loading ? "Buscando..." : "Buscar Relatório"}
                 </Button>
               </div>

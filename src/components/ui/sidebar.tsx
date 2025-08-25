@@ -268,8 +268,8 @@ function SidebarTrigger({
       variant="ghost"
       size="icon"
       className={cn(
-        "relative h-9 w-9 rounded-lg border border-border/40 bg-gradient-to-br from-background via-background to-muted/10 shadow-sm transition-all duration-200 hover:scale-105 hover:border-primary/20 hover:bg-gradient-to-br hover:from-primary/5 hover:to-primary/10 hover:shadow-md active:scale-95",
-        className
+        "border-border/40 from-background via-background to-muted/10 hover:border-primary/20 hover:from-primary/5 hover:to-primary/10 relative h-9 w-9 rounded-lg border bg-gradient-to-br shadow-sm transition-all duration-200 hover:scale-105 hover:bg-gradient-to-br hover:shadow-md active:scale-95",
+        className,
       )}
       onClick={(event) => {
         onClick?.(event);
@@ -283,15 +283,15 @@ function SidebarTrigger({
           {isCollapsed ? (
             // Ícone para sidebar fechada (hamburguer)
             <div className="flex h-full w-full flex-col items-center justify-center space-y-0.5">
-              <div className="h-0.5 w-3.5 rounded-full bg-foreground transition-all duration-200" />
-              <div className="h-0.5 w-3.5 rounded-full bg-foreground transition-all duration-200" />
-              <div className="h-0.5 w-3.5 rounded-full bg-foreground transition-all duration-200" />
+              <div className="bg-foreground h-0.5 w-3.5 rounded-full transition-all duration-200" />
+              <div className="bg-foreground h-0.5 w-3.5 rounded-full transition-all duration-200" />
+              <div className="bg-foreground h-0.5 w-3.5 rounded-full transition-all duration-200" />
             </div>
           ) : (
             // Ícone para sidebar aberta (arrow left)
             <div className="flex h-full w-full items-center justify-center">
               <svg
-                className="h-4 w-4 text-foreground transition-transform duration-200"
+                className="text-foreground h-4 w-4 transition-transform duration-200"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -306,9 +306,9 @@ function SidebarTrigger({
             </div>
           )}
         </div>
-        
+
         {/* Indicador de estado adicional */}
-        <div className="absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-primary/60 transition-all duration-200" />
+        <div className="bg-primary/60 absolute -right-0.5 -bottom-0.5 h-1.5 w-1.5 rounded-full transition-all duration-200" />
       </div>
       <span className="sr-only">
         {isCollapsed ? "Abrir sidebar" : "Fechar sidebar"}
@@ -512,7 +512,7 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
 }
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-hidden ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-hidden ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 aria-disabled:cursor-not-allowed data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
   {
     variants: {
       variant: {

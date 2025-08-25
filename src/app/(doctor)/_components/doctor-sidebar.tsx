@@ -142,7 +142,7 @@ export function DoctorSidebar() {
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={handleSignOut}
-                  className="hover:bg-destructive/10 rounded-md transition-colors"
+                  className="hover:bg-destructive/10 cursor-pointer rounded-md transition-colors"
                 >
                   <div className="flex w-full items-center gap-3 px-3 py-2">
                     <div className="bg-destructive/10 border-destructive/20 rounded border p-1">

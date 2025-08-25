@@ -119,7 +119,7 @@ export function CalendarView({
                 variant="ghost"
                 size="sm"
                 onClick={goToToday}
-                className="bg-muted/50 hover:bg-muted border-border/40 h-auto border px-3 py-1.5 text-xs font-medium"
+                className="bg-muted/50 hover:bg-muted border-border/40 h-auto cursor-pointer border px-3 py-1.5 text-xs font-medium"
               >
                 Hoje
               </Button>
@@ -129,7 +129,7 @@ export function CalendarView({
                   variant="ghost"
                   size="sm"
                   onClick={() => navigateMonth("prev")}
-                  className="hover:bg-background h-8 w-8 rounded-l-lg rounded-r-none border-0 p-0"
+                  className="hover:bg-background h-8 w-8 cursor-pointer rounded-l-lg rounded-r-none border-0 p-0"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -140,7 +140,7 @@ export function CalendarView({
                   variant="ghost"
                   size="sm"
                   onClick={() => navigateMonth("next")}
-                  className="hover:bg-background h-8 w-8 rounded-l-none rounded-r-lg border-0 p-0"
+                  className="hover:bg-background h-8 w-8 cursor-pointer rounded-l-none rounded-r-lg border-0 p-0"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>

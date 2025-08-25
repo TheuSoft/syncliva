@@ -18,7 +18,7 @@ export function ViewToggle({ view, onViewChange }: ViewToggleProps) {
         size="sm"
         onClick={() => onViewChange("calendar")}
         className={cn(
-          "flex items-center gap-2",
+          "flex cursor-pointer items-center gap-2",
           view === "calendar" && "shadow-sm",
         )}
       >
@@ -30,7 +30,7 @@ export function ViewToggle({ view, onViewChange }: ViewToggleProps) {
         size="sm"
         onClick={() => onViewChange("list")}
         className={cn(
-          "flex items-center gap-2",
+          "flex cursor-pointer items-center gap-2",
           view === "list" && "shadow-sm",
         )}
       >

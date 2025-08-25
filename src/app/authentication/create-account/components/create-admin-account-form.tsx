@@ -13,13 +13,6 @@ import { createAdminAccount } from "@/actions/create-admin-account";
 import { createAdminAccountSchema } from "@/actions/create-admin-account/schema";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Form,
   FormControl,
   FormField,
@@ -57,138 +50,152 @@ const CreateAdminAccountForm = () => {
     },
   });
 
-  const handleSubmit = async (values: z.infer<typeof createAdminAccountSchema>) => {
+  const handleSubmit = async (
+    values: z.infer<typeof createAdminAccountSchema>,
+  ) => {
     createAccountAction.execute(values);
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader className="space-y-4">
+    <div className="w-full">
+      <div className="mb-6 space-y-4">
         <div className="flex items-center justify-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
-            <Building2 className="h-6 w-6 text-blue-600" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 shadow-lg">
+            <Building2 className="h-6 w-6 text-white" />
           </div>
         </div>
         <div className="text-center">
-          <CardTitle className="text-2xl font-bold">Criar Conta</CardTitle>
-          <CardDescription className="text-base">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Criar Conta
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400">
             Configure sua clínica e conta de administrador
-          </CardDescription>
-        </div>
-      </CardHeader>
-      
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            {/* Dados Pessoais */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-muted-foreground" />
-                <h3 className="text-sm font-medium">Seus Dados</h3>
-              </div>
-              
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome completo</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Seu nome completo" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="seu@email.com" type="email" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Senha</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Mínimo 6 caracteres" type="password" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <Separator />
-
-            {/* Dados da Clínica */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-                <h3 className="text-sm font-medium">Dados da Clínica</h3>
-              </div>
-              
-              <FormField
-                control={form.control}
-                name="clinicName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome da clínica</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Nome da sua clínica" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <Separator />
-
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={form.formState.isSubmitting}
-            >
-              {form.formState.isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Criando conta...
-                </>
-              ) : (
-                <>
-                  <Building2 className="mr-2 h-4 w-4" />
-                  Criar Conta e Clínica
-                </>
-              )}
-            </Button>
-          </form>
-        </Form>
-
-        <div className="mt-6 text-center">
-          <p className="text-sm text-muted-foreground">
-            Já tem uma conta?{" "}
-            <Link 
-              href="/authentication" 
-              className="text-primary hover:underline font-medium"
-            >
-              Fazer login
-            </Link>
           </p>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          {/* Dados Pessoais */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                Seus Dados
+              </h3>
+            </div>
+
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome completo</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Seu nome completo" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="seu@email.com"
+                      type="email"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Senha</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Mínimo 6 caracteres"
+                      type="password"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <Separator />
+
+          {/* Dados da Clínica */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                Dados da Clínica
+              </h3>
+            </div>
+
+            <FormField
+              control={form.control}
+              name="clinicName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome da clínica</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nome da sua clínica" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <Separator />
+
+          <Button
+            type="submit"
+            className="w-full cursor-pointer bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg transition-all duration-200 hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl"
+            disabled={form.formState.isSubmitting}
+          >
+            {form.formState.isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Criando conta...
+              </>
+            ) : (
+              <>
+                <Building2 className="mr-2 h-4 w-4" />
+                Criar Conta e Clínica
+              </>
+            )}
+          </Button>
+        </form>
+      </Form>
+
+      <div className="mt-6 text-center">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Já tem uma conta?{" "}
+          <Link
+            href="/authentication"
+            className="cursor-pointer font-medium text-blue-600 hover:underline dark:text-blue-400"
+          >
+            Fazer login
+          </Link>
+        </p>
+      </div>
+    </div>
   );
 };
 

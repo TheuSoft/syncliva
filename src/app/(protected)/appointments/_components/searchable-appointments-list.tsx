@@ -241,19 +241,18 @@ const SearchableAppointmentsList = ({
 
       {/* Busca e controles */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        {/* Campo de busca - apenas na visualização de lista */}
-        {view === "list" && (
-          <Input
-            type="text"
-            placeholder="Buscar por nome do paciente..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-sm"
-          />
-        )}
-
+        {/* Lado esquerdo - Campo de busca e botão limpar filtros */}
         <div className="flex items-center gap-2">
-          <ViewToggle view={view} onViewChange={setView} />
+          {/* Campo de busca - apenas na visualização de lista */}
+          {view === "list" && (
+            <Input
+              type="text"
+              placeholder="Buscar por nome do paciente..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="max-w-sm"
+            />
+          )}
 
           {/* Botão limpar filtros - apenas na visualização de lista */}
           {view === "list" &&
@@ -264,6 +263,11 @@ const SearchableAppointmentsList = ({
                 Limpar filtros
               </Button>
             )}
+        </div>
+
+        {/* Lado direito - ViewToggle sempre aqui */}
+        <div className="flex items-center gap-2">
+          <ViewToggle view={view} onViewChange={setView} />
         </div>
       </div>
 

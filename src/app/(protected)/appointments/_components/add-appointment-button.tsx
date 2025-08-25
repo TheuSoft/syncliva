@@ -29,7 +29,7 @@ const AddAppointmentButton = ({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button className="cursor-pointer">
           <Plus className="mr-2 h-4 w-4" />
           Novo Agendamento
         </Button>

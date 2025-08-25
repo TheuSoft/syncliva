@@ -1,6 +1,6 @@
 "use client";
 
-import { Check,Copy } from "lucide-react";
+import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -52,18 +52,18 @@ export function TokenDisplayDialog({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent 
+      <DialogContent
         className="sm:max-w-lg"
         onPointerDownOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
           <DialogTitle>Convite Gerado com Sucesso!</DialogTitle>
           <DialogDescription>
-            O link de convite foi gerado para Dr. {doctorName}. 
-            Compartilhe este link diretamente com o médico.
+            O link de convite foi gerado para Dr. {doctorName}. Compartilhe este
+            link diretamente com o médico.
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="doctorEmail">Email do médico</Label>
@@ -75,7 +75,7 @@ export function TokenDisplayDialog({
               className="bg-gray-50"
             />
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="inviteLink">Link de convite</Label>
             <div className="flex gap-2">
@@ -90,7 +90,7 @@ export function TokenDisplayDialog({
                 variant="outline"
                 size="sm"
                 onClick={handleCopy}
-                className="shrink-0"
+                className="shrink-0 cursor-pointer"
               >
                 {copied ? (
                   <Check className="h-4 w-4" />
@@ -100,16 +100,18 @@ export function TokenDisplayDialog({
               </Button>
             </div>
           </div>
-          
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
             <div className="flex">
               <div className="ml-3">
                 <h3 className="text-sm font-medium text-blue-800">
                   Instruções
                 </h3>
                 <div className="mt-1 text-sm text-blue-700">
-                  <ul className="list-disc list-inside space-y-1">
-                    <li>Copie o link acima e envie diretamente para o médico</li>
+                  <ul className="list-inside list-disc space-y-1">
+                    <li>
+                      Copie o link acima e envie diretamente para o médico
+                    </li>
                     <li>O médico deve clicar no link para criar sua conta</li>
                     <li>O link expira em 7 dias</li>
                     <li>Após o registro, o médico terá acesso ao sistema</li>
@@ -118,22 +120,23 @@ export function TokenDisplayDialog({
               </div>
             </div>
           </div>
-          
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+
+          <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3">
             <div className="flex">
               <div className="ml-3">
                 <h3 className="text-sm font-medium text-yellow-800">
                   Importante
                 </h3>
                 <div className="mt-1 text-sm text-yellow-700">
-                  Este link contém informações sensíveis. Compartilhe apenas com o médico designado.
+                  Este link contém informações sensíveis. Compartilhe apenas com
+                  o médico designado.
                 </div>
               </div>
             </div>
           </div>
-          
+
           <div className="flex justify-end">
-            <Button onClick={onClose} className="w-full">
+            <Button onClick={onClose} className="w-full cursor-pointer">
               Fechar e Continuar
             </Button>
           </div>

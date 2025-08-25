@@ -211,7 +211,7 @@ export default function DoctorReportsPage() {
         </PageHeaderContent>
         <PageActions>
           {agendamentos.length > 0 && (
-            <Button onClick={gerarPDF} className="gap-2">
+            <Button onClick={gerarPDF} className="cursor-pointer gap-2">
               <DownloadIcon className="h-4 w-4" />
               Exportar PDF
             </Button>
@@ -297,7 +297,11 @@ export default function DoctorReportsPage() {
               {/* Botão Buscar */}
               <div className="space-y-2">
                 <label className="text-sm font-medium opacity-0">Buscar</label>
-                <Button onClick={buscar} disabled={loading} className="w-full">
+                <Button
+                  onClick={buscar}
+                  disabled={loading}
+                  className="w-full cursor-pointer"
+                >
                   {loading ? "Buscando..." : "Buscar"}
                 </Button>
               </div>

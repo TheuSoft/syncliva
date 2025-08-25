@@ -17,18 +17,19 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50">
       <Card className="w-[500px]">
         <CardHeader>
-          <CardTitle className="text-2xl text-center text-red-600">
+          <CardTitle className="text-center text-2xl text-red-600">
             Algo deu errado!
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-center">
           <p className="text-muted-foreground">
-            Ocorreu um erro inesperado. Tente novamente ou entre em contato com o suporte.
+            Ocorreu um erro inesperado. Tente novamente ou entre em contato com
+            o suporte.
           </p>
-          <Button onClick={reset} className="w-full">
+          <Button onClick={reset} className="w-full cursor-pointer">
             Tentar novamente
           </Button>
         </CardContent>

@@ -95,7 +95,7 @@ const PatientCard = ({ patient }: PatientCardProps) => {
           onOpenChange={setIsUpsertPatientDialogOpen}
         >
           <DialogTrigger asChild>
-            <Button className="bg-primary hover:bg-primary/90 w-full font-medium transition-colors">
+            <Button className="bg-primary hover:bg-primary/90 w-full cursor-pointer font-medium transition-colors">
               Ver detalhes
             </Button>
           </DialogTrigger>
