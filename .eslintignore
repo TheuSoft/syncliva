@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+
+# Environment variables
+.env*
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
+
+# Generated types
+*.d.ts
+!src/**/*.d.ts
+
+# Drizzle generated files
+drizzle/

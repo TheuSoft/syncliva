@@ -11,6 +11,17 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
+  // Ignorar arquivos gerados automaticamente
+  {
+    ignores: [
+      ".next/**",
+      "node_modules/**",
+      "dist/**",
+      "build/**",
+      "*.d.ts",
+      "drizzle/**",
+    ],
+  },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
     plugins: {
