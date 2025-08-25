@@ -25,24 +25,35 @@ const SearchablePatientsList = ({
   );
 
   return (
-    <div>
-      <div className="mb-4">
-        <Input
-          type="text"
-          placeholder="Buscar por nome do paciente..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm"
-        />
-        {searchTerm && (
-          <p className="text-muted-foreground mt-1 text-sm">
-            Mostrando {filteredPatients.length} de {initialPatients.length}{" "}
-            pacientes
-          </p>
-        )}
+    <div className="space-y-6">
+      <div className="from-background to-muted/20 border-border/40 rounded-lg border bg-gradient-to-br p-4 shadow-sm">
+        <div className="space-y-3">
+          <Input
+            type="text"
+            placeholder="Buscar por nome do paciente..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="border-border/60 focus:border-primary/60 max-w-sm transition-colors"
+          />
+          {searchTerm && (
+            <p className="text-muted-foreground text-sm font-medium">
+              Mostrando{" "}
+              <span className="text-primary font-semibold">
+                {filteredPatients.length}
+              </span>{" "}
+              de{" "}
+              <span className="text-foreground font-semibold">
+                {initialPatients.length}
+              </span>{" "}
+              pacientes
+            </p>
+          )}
+        </div>
       </div>
 
-      <DataTable data={filteredPatients} columns={columns} />
+      <div className="from-background to-muted/20 border-border/40 overflow-hidden rounded-lg border bg-gradient-to-br shadow-sm">
+        <DataTable data={filteredPatients} columns={columns} />
+      </div>
     </div>
   );
 };

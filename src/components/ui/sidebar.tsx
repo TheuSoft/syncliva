@@ -2,7 +2,6 @@
 
 import { Slot } from "@radix-ui/react-slot";
 import { cva, VariantProps } from "class-variance-authority";
-import { PanelLeftIcon } from "lucide-react";
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";
@@ -259,7 +258,8 @@ function SidebarTrigger({
   onClick,
   ...props
 }: React.ComponentProps<typeof Button>) {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, state } = useSidebar();
+  const isCollapsed = state === "collapsed";
 
   return (
     <Button
@@ -267,15 +267,52 @@ function SidebarTrigger({
       data-slot="sidebar-trigger"
       variant="ghost"
       size="icon"
-      className={cn("size-7", className)}
+      className={cn(
+        "relative h-9 w-9 rounded-lg border border-border/40 bg-gradient-to-br from-background via-background to-muted/10 shadow-sm transition-all duration-200 hover:scale-105 hover:border-primary/20 hover:bg-gradient-to-br hover:from-primary/5 hover:to-primary/10 hover:shadow-md active:scale-95",
+        className
+      )}
       onClick={(event) => {
         onClick?.(event);
         toggleSidebar();
       }}
       {...props}
     >
-      <PanelLeftIcon />
-      <span className="sr-only">Toggle Sidebar</span>
+      <div className="relative flex h-5 w-5 items-center justify-center">
+        {/* Ícone animado baseado no estado da sidebar */}
+        <div className="absolute inset-0 transition-all duration-300 ease-in-out">
+          {isCollapsed ? (
+            // Ícone para sidebar fechada (hamburguer)
+            <div className="flex h-full w-full flex-col items-center justify-center space-y-0.5">
+              <div className="h-0.5 w-3.5 rounded-full bg-foreground transition-all duration-200" />
+              <div className="h-0.5 w-3.5 rounded-full bg-foreground transition-all duration-200" />
+              <div className="h-0.5 w-3.5 rounded-full bg-foreground transition-all duration-200" />
+            </div>
+          ) : (
+            // Ícone para sidebar aberta (arrow left)
+            <div className="flex h-full w-full items-center justify-center">
+              <svg
+                className="h-4 w-4 text-foreground transition-transform duration-200"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+            </div>
+          )}
+        </div>
+        
+        {/* Indicador de estado adicional */}
+        <div className="absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-primary/60 transition-all duration-200" />
+      </div>
+      <span className="sr-only">
+        {isCollapsed ? "Abrir sidebar" : "Fechar sidebar"}
+      </span>
     </Button>
   );
 }

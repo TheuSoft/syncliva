@@ -3,7 +3,10 @@
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
+import { cancelAppointment } from "@/actions/cancel-appointment";
+import { confirmAppointment } from "@/actions/confirm-appointment";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,7 +19,9 @@ import {
 import type { AppointmentWithRelations } from "@/types/appointments";
 
 import { AppointmentsTimeline } from "./appointments-timeline";
+import { CalendarView } from "./calendar-view";
 import { EditAppointmentModal } from "./edit-appointment-modal";
+import { ViewToggle } from "./view-toggle";
 
 // Tipos para pacientes e médicos
 type Patient = {
@@ -54,6 +59,7 @@ const SearchableAppointmentsList = ({
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
   const [selectedDoctor, setSelectedDoctor] = useState<string>("all");
+  const [view, setView] = useState<"calendar" | "list">("calendar");
 
   // ✅ Estados para modal de edição
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -134,78 +140,131 @@ const SearchableAppointmentsList = ({
     setEditModalOpen(true);
   };
 
+  // Funções para ações dos agendamentos
+  const handleConfirmAppointment = async (
+    appointment: AppointmentWithRelations,
+  ) => {
+    try {
+      const result = await confirmAppointment({
+        appointmentId: appointment.id,
+      });
+
+      if (result.success) {
+        toast.success(result.message);
+        // Recarregar a página para atualizar os dados
+        window.location.reload();
+      } else {
+        toast.error(result.message);
+      }
+    } catch {
+      toast.error("Erro ao confirmar agendamento");
+    }
+  };
+
+  const handleCancelAppointment = async (
+    appointment: AppointmentWithRelations,
+  ) => {
+    try {
+      const result = await cancelAppointment({ appointmentId: appointment.id });
+
+      if (result.success) {
+        toast.success(result.message);
+        // Recarregar a página para atualizar os dados
+        window.location.reload();
+      } else {
+        toast.error(result.message);
+      }
+    } catch {
+      toast.error("Erro ao cancelar agendamento");
+    }
+  };
+
   return (
     <div className="space-y-4">
-      {/* Filtros */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-col gap-2 md:flex-row md:gap-4">
-          <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium">Filtrar por mês:</p>
-            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="w-full md:w-[280px]">
-                <SelectValue placeholder="Selecione um mês" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os meses</SelectItem>
-                {availableMonthsByYear.sortedYears.map((year) => (
-                  <div key={year}>
-                    <div className="text-muted-foreground px-2 py-1.5 text-sm font-semibold">
-                      {year}
-                    </div>
-                    {availableMonthsByYear.groupedByYear[year].map(
-                      ({ key, label }) => (
-                        <SelectItem key={key} value={key} className="pl-6">
-                          {label}
-                        </SelectItem>
-                      ),
-                    )}
-                  </div>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Seletor de médicos - somente para admin */}
-          {!isDoctor && (
+      {/* Filtros - apenas na visualização de lista */}
+      {view === "list" && (
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-2 md:flex-row md:gap-4">
             <div className="flex flex-col gap-2">
-              <p className="text-sm font-medium">Filtrar por médico:</p>
-              <Select value={selectedDoctor} onValueChange={setSelectedDoctor}>
+              <p className="text-sm font-medium">Filtrar por mês:</p>
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                 <SelectTrigger className="w-full md:w-[280px]">
-                  <SelectValue placeholder="Selecione um médico" />
+                  <SelectValue placeholder="Selecione um mês" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos os médicos</SelectItem>
-                  {doctors.map((doctor) => (
-                    <SelectItem key={doctor.id} value={doctor.id}>
-                      <span className="font-medium text-blue-700 dark:text-blue-300">
-                        {doctor.name} - {doctor.specialty}
-                      </span>
-                    </SelectItem>
+                  <SelectItem value="all">Todos os meses</SelectItem>
+                  {availableMonthsByYear.sortedYears.map((year) => (
+                    <div key={year}>
+                      <div className="text-muted-foreground px-2 py-1.5 text-sm font-semibold">
+                        {year}
+                      </div>
+                      {availableMonthsByYear.groupedByYear[year].map(
+                        ({ key, label }) => (
+                          <SelectItem key={key} value={key} className="pl-6">
+                            {label}
+                          </SelectItem>
+                        ),
+                      )}
+                    </div>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-          )}
+
+            {/* Seletor de médicos - somente para admin */}
+            {!isDoctor && (
+              <div className="flex flex-col gap-2">
+                <p className="text-sm font-medium">Filtrar por médico:</p>
+                <Select
+                  value={selectedDoctor}
+                  onValueChange={setSelectedDoctor}
+                >
+                  <SelectTrigger className="w-full md:w-[280px]">
+                    <SelectValue placeholder="Selecione um médico" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os médicos</SelectItem>
+                    {doctors.map((doctor) => (
+                      <SelectItem key={doctor.id} value={doctor.id}>
+                        <span className="font-medium text-blue-700 dark:text-blue-300">
+                          {doctor.name} - {doctor.specialty}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Busca e botão limpar */}
-      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <Input
-          type="text"
-          placeholder="Buscar por nome do paciente..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm"
-        />
-
-        {(searchTerm ||
-          selectedMonth !== "all" ||
-          selectedDoctor !== "all") && (
-          <Button variant="outline" onClick={clearFilters}>
-            Limpar filtros
-          </Button>
+      {/* Busca e controles */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        {/* Campo de busca - apenas na visualização de lista */}
+        {view === "list" && (
+          <Input
+            type="text"
+            placeholder="Buscar por nome do paciente..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-sm"
+          />
         )}
+
+        <div className="flex items-center gap-2">
+          <ViewToggle view={view} onViewChange={setView} />
+
+          {/* Botão limpar filtros - apenas na visualização de lista */}
+          {view === "list" &&
+            (searchTerm ||
+              selectedMonth !== "all" ||
+              selectedDoctor !== "all") && (
+              <Button variant="outline" onClick={clearFilters}>
+                Limpar filtros
+              </Button>
+            )}
+        </div>
       </div>
 
       {/* Informações dos filtros */}
@@ -239,13 +298,23 @@ const SearchableAppointmentsList = ({
         </p>
       </div>
 
-      {/* Timeline de Agendamentos */}
-      <AppointmentsTimeline
-        appointments={filteredAppointments}
-        onEdit={handleEditAppointment}
-        doctorId={doctorId}
-        isDoctor={isDoctor}
-      />
+      {/* Visualização dos agendamentos */}
+      {view === "calendar" ? (
+        <CalendarView
+          appointments={filteredAppointments}
+          onEditAppointment={handleEditAppointment}
+          onConfirmAppointment={handleConfirmAppointment}
+          onCancelAppointment={handleCancelAppointment}
+          isDoctor={isDoctor}
+        />
+      ) : (
+        <AppointmentsTimeline
+          appointments={filteredAppointments}
+          onEdit={handleEditAppointment}
+          doctorId={doctorId}
+          isDoctor={isDoctor}
+        />
+      )}
 
       {/* Modal de Edição - não mostrar para médicos */}
       {!isDoctor && (

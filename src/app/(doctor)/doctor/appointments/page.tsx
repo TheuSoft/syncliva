@@ -3,7 +3,14 @@ import { headers } from "next/headers";
 import { getDoctorAppointments } from "@/actions/get-doctor-appointments";
 import SearchableAppointmentsList from "@/app/(protected)/appointments/_components/searchable-appointments-list";
 import { Card, CardContent } from "@/components/ui/card";
-import { PageContainer } from "@/components/ui/page-container";
+import {
+  PageContainer,
+  PageContent,
+  PageDescription,
+  PageHeader,
+  PageHeaderContent,
+  PageTitle,
+} from "@/components/ui/page-container";
 import { auth } from "@/lib/auth";
 import type { AppointmentWithRelations } from "@/types/appointments";
 
@@ -21,22 +28,39 @@ export default async function DoctorAppointments() {
   if (!session?.user || !session.user.doctorId) {
     return (
       <PageContainer>
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">
-              Pacientes Marcados
-            </h1>
-            <p className="text-muted-foreground">
+        <PageHeader>
+          <PageHeaderContent>
+            <PageTitle>Pacientes Marcados</PageTitle>
+            <PageDescription>
               Visualize e gerencie seus pacientes agendados
-            </p>
-          </div>
+            </PageDescription>
+          </PageHeaderContent>
+        </PageHeader>
 
-          <Card>
+        <PageContent>
+          <Card className="from-background to-muted/20 border-border/40 border bg-gradient-to-br shadow-sm">
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <p className="text-red-500">Erro: Médico não encontrado</p>
+              <div className="bg-destructive/10 border-destructive/20 mx-auto mb-4 w-fit rounded-xl border p-3">
+                <svg
+                  className="text-destructive h-12 w-12"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 19c-.77.833.192 2.5 1.732 2.5z"
+                  />
+                </svg>
+              </div>
+              <h3 className="mb-2 text-lg font-semibold">
+                Erro: Médico não encontrado
+              </h3>
             </CardContent>
           </Card>
-        </div>
+        </PageContent>
       </PageContainer>
     );
   }
@@ -46,22 +70,39 @@ export default async function DoctorAppointments() {
   if (!result.success) {
     return (
       <PageContainer>
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">
-              Pacientes Marcados
-            </h1>
-            <p className="text-muted-foreground">
+        <PageHeader>
+          <PageHeaderContent>
+            <PageTitle>Pacientes Marcados</PageTitle>
+            <PageDescription>
               Visualize e gerencie seus pacientes agendados
-            </p>
-          </div>
+            </PageDescription>
+          </PageHeaderContent>
+        </PageHeader>
 
-          <Card>
+        <PageContent>
+          <Card className="from-background to-muted/20 border-border/40 border bg-gradient-to-br shadow-sm">
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <p className="text-red-500">Erro: {result.error}</p>
+              <div className="bg-destructive/10 border-destructive/20 mx-auto mb-4 w-fit rounded-xl border p-3">
+                <svg
+                  className="text-destructive h-12 w-12"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 19c-.77.833.192 2.5 1.732 2.5z"
+                  />
+                </svg>
+              </div>
+              <h3 className="mb-2 text-lg font-semibold">
+                Erro: {result.error}
+              </h3>
             </CardContent>
           </Card>
-        </div>
+        </PageContent>
       </PageContainer>
     );
   }
@@ -107,17 +148,17 @@ export default async function DoctorAppointments() {
 
   return (
     <PageContainer>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Pacientes Marcados
-          </h1>
-          <p className="text-muted-foreground">
+      <PageHeader>
+        <PageHeaderContent>
+          <PageTitle>Pacientes Marcados</PageTitle>
+          <PageDescription>
             Visualize e gerencie seus pacientes agendados ({appointments.length}{" "}
             agendamento{appointments.length !== 1 ? "s" : ""})
-          </p>
-        </div>
+          </PageDescription>
+        </PageHeaderContent>
+      </PageHeader>
 
+      <PageContent>
         {/* Usar o componente SearchableAppointmentsList com isDoctor=true */}
         <SearchableAppointmentsList
           initialAppointments={appointmentsFormatted}
@@ -128,19 +169,34 @@ export default async function DoctorAppointments() {
         />
 
         {appointments.length === 0 && (
-          <Card>
+          <Card className="from-background to-muted/20 border-border/40 border bg-gradient-to-br shadow-sm">
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <p className="text-muted-foreground">
+              <div className="bg-muted/30 border-border/30 mx-auto mb-4 w-fit rounded-xl border p-3">
+                <svg
+                  className="text-muted-foreground h-12 w-12"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 4v10a2 2 0 002 2h4a2 2 0 002-2V11m-6 0h8m-8 0V7a2 2 0 012-2h4a2 2 0 012 2v4"
+                  />
+                </svg>
+              </div>
+              <h3 className="mb-2 text-lg font-semibold">
                 Nenhum agendamento encontrado
-              </p>
-              <p className="text-muted-foreground mt-2 text-sm">
+              </h3>
+              <p className="text-muted-foreground text-center">
                 Seus pacientes marcados aparecerão aqui quando houver
                 agendamentos
               </p>
             </CardContent>
           </Card>
         )}
-      </div>
+      </PageContent>
     </PageContainer>
   );
 }

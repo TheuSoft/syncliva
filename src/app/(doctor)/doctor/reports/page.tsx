@@ -221,12 +221,16 @@ export default function DoctorReportsPage() {
 
       <PageContent>
         {/* Filtros */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileTextIcon className="h-5 w-5" />
-              Filtros de Relatório
-            </CardTitle>
+        <Card className="from-background to-muted/20 border-border/40 border bg-gradient-to-br shadow-sm transition-all duration-300 hover:shadow-md">
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-primary/10 border-primary/20 rounded-lg border p-2">
+                <FileTextIcon className="text-primary h-5 w-5" />
+              </div>
+              <CardTitle className="text-lg font-semibold">
+                Filtros de Relatório
+              </CardTitle>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
@@ -312,16 +316,20 @@ export default function DoctorReportsPage() {
 
         {/* Estatísticas */}
         {agendamentos.length > 0 && (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total de Consultas
-                </CardTitle>
-                <UserIcon className="text-muted-foreground h-4 w-4" />
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+            <Card className="border-border/40 border bg-gradient-to-br from-blue-500/10 to-cyan-500/5 shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-md">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-2">
+                    <UserIcon className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <CardTitle className="text-muted-foreground text-sm font-semibold">
+                    Total de Consultas
+                  </CardTitle>
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
+              <CardContent className="pt-0">
+                <div className="text-foreground text-2xl font-bold">
                   {estatisticas.totalAgendamentos}
                 </div>
                 <p className="text-muted-foreground text-xs">
@@ -332,15 +340,19 @@ export default function DoctorReportsPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Faturamento Total
-                </CardTitle>
-                <DollarSignIcon className="text-muted-foreground h-4 w-4" />
+            <Card className="border-border/40 border bg-gradient-to-br from-green-500/10 to-emerald-500/5 shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-md">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl border border-green-500/20 bg-green-500/10 p-2">
+                    <DollarSignIcon className="h-4 w-4 text-green-600" />
+                  </div>
+                  <CardTitle className="text-muted-foreground text-sm font-semibold">
+                    Faturamento Total
+                  </CardTitle>
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
+              <CardContent className="pt-0">
+                <div className="text-2xl font-bold text-green-600">
                   {formatCurrencyInCents(estatisticas.totalValor)}
                 </div>
                 <p className="text-muted-foreground text-xs">
@@ -351,15 +363,19 @@ export default function DoctorReportsPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Consultas Confirmadas
-                </CardTitle>
-                <CalendarIcon className="text-muted-foreground h-4 w-4" />
+            <Card className="border-border/40 border bg-gradient-to-br from-purple-500/10 to-violet-500/5 shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-md">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl border border-purple-500/20 bg-purple-500/10 p-2">
+                    <CalendarIcon className="h-4 w-4 text-purple-600" />
+                  </div>
+                  <CardTitle className="text-muted-foreground text-sm font-semibold">
+                    Consultas Confirmadas
+                  </CardTitle>
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
+              <CardContent className="pt-0">
+                <div className="text-foreground text-2xl font-bold">
                   {estatisticas.porStatus.confirmed?.count || 0}
                 </div>
                 <p className="text-muted-foreground text-xs">
@@ -370,15 +386,19 @@ export default function DoctorReportsPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Consultas Pendentes
-                </CardTitle>
-                <CalendarIcon className="text-muted-foreground h-4 w-4" />
+            <Card className="border-border/40 border bg-gradient-to-br from-orange-500/10 to-amber-500/5 shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-md">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl border border-orange-500/20 bg-orange-500/10 p-2">
+                    <CalendarIcon className="h-4 w-4 text-orange-600" />
+                  </div>
+                  <CardTitle className="text-muted-foreground text-sm font-semibold">
+                    Consultas Pendentes
+                  </CardTitle>
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
+              <CardContent className="pt-0">
+                <div className="text-foreground text-2xl font-bold">
                   {estatisticas.porStatus.pending?.count || 0}
                 </div>
                 <p className="text-muted-foreground text-xs">

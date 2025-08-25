@@ -1,113 +1,101 @@
-import { CalendarIcon, DollarSignIcon, FileTextIcon, UserIcon } from "lucide-react";
+import { CalendarIcon, FileTextIcon, UserIcon } from "lucide-react";
 import Link from "next/link";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  PageContainer,
+  PageContent,
+  PageDescription,
+  PageHeader,
+  PageHeaderContent,
+  PageTitle,
+} from "@/components/ui/page-container";
 
 export default function DoctorDashboard() {
   return (
-    <div className="container mx-auto p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Dashboard do Médico</h1>
-        <p className="text-muted-foreground">
-          Bem-vindo! Acesse suas funcionalidades principais
-        </p>
-      </div>
+    <PageContainer>
+      <PageHeader>
+        <PageHeaderContent>
+          <PageTitle>Dashboard do Médico</PageTitle>
+          <PageDescription>
+            Bem-vindo! Acesse suas funcionalidades principais
+          </PageDescription>
+        </PageHeaderContent>
+      </PageHeader>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Card Agendamentos */}
-        <Link href="/doctor/appointments">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Meus Agendamentos</CardTitle>
-              <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">Consultas</div>
-              <p className="text-xs text-muted-foreground">
-                Visualize e gerencie suas consultas
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
+      <PageContent>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {/* Card Agendamentos */}
+          <Link href="/doctor/appointments">
+            <Card className="border-border/40 cursor-pointer border bg-gradient-to-br from-blue-500/10 to-cyan-500/5 shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-md">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-semibold">
+                    Meus Agendamentos
+                  </CardTitle>
+                  <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-2">
+                    <CalendarIcon className="h-4 w-4 text-blue-600" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-foreground text-2xl font-bold">
+                  Consultas
+                </div>
+                <p className="text-muted-foreground text-xs">
+                  Visualize e gerencie suas consultas
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
 
-        {/* Card Relatórios */}
-        <Link href="/doctor/reports">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Relatórios</CardTitle>
-              <FileTextIcon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">Faturamento</div>
-              <p className="text-xs text-muted-foreground">
-                Analise suas consultas e ganhos
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
+          {/* Card Relatórios */}
+          <Link href="/doctor/reports">
+            <Card className="border-border/40 cursor-pointer border bg-gradient-to-br from-green-500/10 to-emerald-500/5 shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-md">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-semibold">
+                    Relatórios
+                  </CardTitle>
+                  <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-2">
+                    <FileTextIcon className="h-4 w-4 text-green-600" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-foreground text-2xl font-bold">
+                  Faturamento
+                </div>
+                <p className="text-muted-foreground text-xs">
+                  Analise suas consultas e ganhos
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
 
-        {/* Card Perfil */}
-        <Link href="/doctor/profile">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Meu Perfil</CardTitle>
-              <UserIcon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">Dados</div>
-              <p className="text-xs text-muted-foreground">
-                Visualize suas informações
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
-      </div>
-
-      {/* Seção de acesso rápido */}
-      <div className="mt-8">
-        <h2 className="text-xl font-semibold mb-4">Acesso Rápido</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSignIcon className="h-5 w-5" />
-                Relatórios de Faturamento
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground mb-4">
-                Visualize suas consultas realizadas e o faturamento por período.
-              </p>
-              <Link 
-                href="/doctor/reports" 
-                className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-              >
-                Ver Relatórios
-              </Link>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CalendarIcon className="h-5 w-5" />
-                Próximas Consultas
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground mb-4">
-                Confira sua agenda e gerencie seus agendamentos.
-              </p>
-              <Link 
-                href="/doctor/appointments" 
-                className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-              >
-                Ver Agendamentos
-              </Link>
-            </CardContent>
-          </Card>
+          {/* Card Perfil */}
+          <Link href="/doctor/profile">
+            <Card className="border-border/40 cursor-pointer border bg-gradient-to-br from-purple-500/10 to-violet-500/5 shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-md">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-semibold">
+                    Meu Perfil
+                  </CardTitle>
+                  <div className="rounded-lg border border-purple-500/20 bg-purple-500/10 p-2">
+                    <UserIcon className="h-4 w-4 text-purple-600" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-foreground text-2xl font-bold">Dados</div>
+                <p className="text-muted-foreground text-xs">
+                  Visualize suas informações
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
-      </div>
-    </div>
+      </PageContent>
+    </PageContainer>
   );
 }

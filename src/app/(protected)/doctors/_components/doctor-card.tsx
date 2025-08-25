@@ -19,7 +19,6 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
 import { doctorsTable } from "@/db/schema";
 import { formatCurrencyInCents } from "@/helpers/currency";
 
@@ -39,8 +38,9 @@ const DoctorCard = ({ doctor }: DoctorCardProps) => {
   const [isUpsertDoctorDialogOpen, setIsUpsertDoctorDialogOpen] =
     useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
-  
+  const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] =
+    useState(false);
+
   // Remove deleteDoctorAction pois agora será usado no modal
   const handleDeleteDoctorClick = () => {
     setIsDeleteDialogOpen(true);
@@ -61,60 +61,101 @@ const DoctorCard = ({ doctor }: DoctorCardProps) => {
   const hasInvite = !!doctor.inviteToken;
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="from-background to-muted/20 border-border/40 hover:border-primary/30 hover:from-primary/5 hover:to-primary/10 group overflow-hidden rounded-lg border bg-gradient-to-br shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-md">
+      <CardHeader className="p-3 pb-2">
         <div className="flex items-center gap-2">
-          <Avatar className="h-10 w-10">
-            <AvatarFallback>{doctorInitials}</AvatarFallback>
+          <Avatar className="border-primary/20 h-9 w-9 border-2 shadow-sm">
+            <AvatarFallback className="from-primary/10 to-primary/20 text-primary bg-gradient-to-br text-sm font-semibold">
+              {doctorInitials}
+            </AvatarFallback>
           </Avatar>
-          <div>
-            <h3 className="text-sm font-medium">{doctor.name}</h3>
-            <p className="text-muted-foreground text-sm">{doctor.specialty}</p>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-foreground truncate text-sm leading-tight font-semibold">
+              {doctor.name}
+            </h3>
+            <p className="text-muted-foreground text-xs leading-tight font-medium">
+              {doctor.specialty}
+            </p>
             {/* Status do convite/registro */}
-            <div className="flex gap-1 mt-1">
+            <div className="mt-1 flex gap-1">
               {isRegistered && (
-                <Badge variant="default" className="text-xs">
-                  Registrado
+                <Badge
+                  variant="default"
+                  className="h-4 border-0 bg-gradient-to-r from-emerald-500 to-emerald-600 px-1.5 py-0 text-xs text-white shadow-sm"
+                >
+                  ✓ Ativo
                 </Badge>
               )}
               {hasInvite && !isRegistered && (
-                <Badge variant="secondary" className="text-xs">
-                  Convidado
+                <Badge
+                  variant="secondary"
+                  className="h-4 border border-amber-200 bg-gradient-to-r from-amber-50 to-amber-100 px-1.5 py-0 text-xs text-amber-700"
+                >
+                  📧 Convidado
                 </Badge>
               )}
               {!hasInvite && !isRegistered && (
-                <Badge variant="outline" className="text-xs">
-                  Não convidado
+                <Badge
+                  variant="outline"
+                  className="border-muted-foreground/40 text-muted-foreground h-4 border-dashed px-1.5 py-0 text-xs"
+                >
+                  ⏳ Pendente
                 </Badge>
               )}
             </div>
           </div>
         </div>
       </CardHeader>
-      <Separator />
-      <CardContent className="flex flex-col gap-2">
-        <Badge variant="outline">
-          <CalendarIcon className="mr-1" />
-          {availability.from.format("dddd")} a {availability.to.format("dddd")}
-        </Badge>
-        <Badge variant="outline">
-          <ClockIcon className="mr-1" />
-          {availability.from.format("HH:mm")} as{" "}
-          {availability.to.format("HH:mm")}
-        </Badge>
-        <Badge variant="outline">
-          <DollarSignIcon className="mr-1" />
-          {formatCurrencyInCents(doctor.appointmentPriceInCents)}
-        </Badge>
+
+      <CardContent className="flex flex-col gap-1.5 px-3 py-2">
+        <div className="bg-muted/30 border-border/30 rounded-md border p-1.5">
+          <div className="mb-0.5 flex items-center gap-1">
+            <CalendarIcon className="text-primary h-3 w-3" />
+            <span className="text-foreground text-xs font-medium">
+              Disponibilidade
+            </span>
+          </div>
+          <p className="text-muted-foreground text-xs leading-tight">
+            {availability.from.format("ddd")} a {availability.to.format("ddd")}
+          </p>
+        </div>
+
+        <div className="bg-primary/5 border-primary/20 rounded-md border p-1.5">
+          <div className="mb-0.5 flex items-center gap-1">
+            <ClockIcon className="text-primary h-3 w-3" />
+            <span className="text-foreground text-xs font-medium">Horário</span>
+          </div>
+          <p className="text-muted-foreground text-xs leading-tight">
+            {availability.from.format("HH:mm")} às{" "}
+            {availability.to.format("HH:mm")}
+          </p>
+        </div>
+
+        <div className="from-primary/10 to-primary/5 border-primary/20 rounded-md border bg-gradient-to-r p-1.5">
+          <div className="mb-0.5 flex items-center gap-1">
+            <DollarSignIcon className="text-primary h-3 w-3" />
+            <span className="text-foreground text-xs font-medium">
+              Consulta
+            </span>
+          </div>
+          <p className="text-primary text-sm leading-tight font-bold">
+            {formatCurrencyInCents(doctor.appointmentPriceInCents)}
+          </p>
+        </div>
       </CardContent>
-      <Separator />
-      <CardFooter className="flex flex-col gap-2">
+
+      <CardFooter className="border-border/30 from-muted/10 to-muted/5 flex flex-col gap-1.5 border-t bg-gradient-to-r px-3 pt-2 pb-3">
         <Dialog
           open={isUpsertDoctorDialogOpen}
           onOpenChange={setIsUpsertDoctorDialogOpen}
         >
           <DialogTrigger asChild>
-            <Button className="w-full">Ver detalhes</Button>
+            <Button
+              size="sm"
+              className="from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 h-7 w-full transform border-0 bg-gradient-to-r text-xs text-white shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-md"
+            >
+              👁️ Ver detalhes
+            </Button>
           </DialogTrigger>
           <UpsertDoctorForm
             doctor={{
@@ -126,10 +167,9 @@ const DoctorCard = ({ doctor }: DoctorCardProps) => {
             isOpen={isUpsertDoctorDialogOpen}
           />
         </Dialog>
-        
         {/* Botões de convite - apenas se não estiver registrado */}
         {!isRegistered && (
-          <div className="space-y-2">
+          <div className="w-full space-y-1">
             {!hasInvite ? (
               <InviteDoctorButton
                 doctorId={doctor.id}
@@ -137,8 +177,8 @@ const DoctorCard = ({ doctor }: DoctorCardProps) => {
                 disabled={false}
               />
             ) : (
-              <div className="flex flex-col gap-2">
-                <div className="flex gap-2">
+              <div className="flex w-full flex-col gap-1">
+                <div className="flex gap-1">
                   <InviteDoctorButton
                     doctorId={doctor.id}
                     doctorName={doctor.name}
@@ -165,34 +205,35 @@ const DoctorCard = ({ doctor }: DoctorCardProps) => {
             )}
           </div>
         )}
-        
-        {/* Botão de redefinir senha - apenas para médicos registrados */}
-        {isRegistered && (
-          <Button 
-            variant="outline" 
-            className="w-full"
-            onClick={handleResetPasswordClick}
+        <div className="flex w-full gap-1">
+          {/* Botão de redefinir senha - apenas para médicos registrados */}
+          {isRegistered && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="hover:bg-muted/20 text-foreground border-border/40 hover:border-border/60 h-7 flex-1 transform text-xs shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-md"
+              onClick={handleResetPasswordClick}
+            >
+              <KeyIcon className="mr-1 h-3 w-3" />
+              Senha
+            </Button>
+          )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            className={`${isRegistered ? "flex-1" : "w-full"} h-7 transform border-red-200 text-xs text-red-600 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:border-red-300 hover:bg-red-50 hover:shadow-md dark:border-red-800 dark:text-red-400 dark:hover:border-red-700 dark:hover:bg-red-950/20`}
+            onClick={handleDeleteDoctorClick}
           >
-            <KeyIcon />
-            Redefinir Senha
+            <TrashIcon className="mr-1 h-3 w-3" />
+            Deletar
           </Button>
-        )}
-        
-        <Button 
-          variant="outline" 
-          className="w-full"
-          onClick={handleDeleteDoctorClick}
-        >
-          <TrashIcon />
-          Deletar médico
-        </Button>
-        
+        </div>{" "}
         <DeleteDoctorConfirmationDialog
           doctor={doctor}
           open={isDeleteDialogOpen}
           onOpenChange={setIsDeleteDialogOpen}
         />
-        
         <ResetDoctorPasswordDialog
           doctor={doctor}
           open={isResetPasswordDialogOpen}

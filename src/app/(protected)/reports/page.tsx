@@ -335,23 +335,26 @@ export default function ReportsPage() {
             <Button
               onClick={gerarPDF}
               variant="outline"
-              className="flex items-center gap-2"
+              className="hover:bg-primary/10 flex items-center gap-2 transition-colors"
             >
               <DownloadIcon className="h-4 w-4" />
               Exportar PDF
             </Button>
           )}
-          <FileTextIcon className="text-muted-foreground h-5 w-5" />
         </PageActions>
       </PageHeader>
 
       <PageContent>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5" />
-              Filtros de Busca
-            </CardTitle>
+        <Card className="from-background to-muted/20 border-border/40 border bg-gradient-to-br shadow-sm transition-all duration-300 hover:shadow-md">
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-primary/10 border-primary/20 rounded-lg border p-2">
+                <CalendarIcon className="text-primary h-5 w-5" />
+              </div>
+              <CardTitle className="text-lg font-semibold">
+                Filtros de Busca
+              </CardTitle>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
@@ -462,15 +465,20 @@ export default function ReportsPage() {
 
         {agendamentos.length > 0 && (
           <>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-muted-foreground text-sm font-medium">
-                    Total de Agendamentos
-                  </CardTitle>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              <Card className="border-border/40 border bg-gradient-to-br from-blue-500/10 to-cyan-500/5 shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-md">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-2">
+                      <CalendarIcon className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <CardTitle className="text-muted-foreground text-sm font-semibold">
+                      Total de Agendamentos
+                    </CardTitle>
+                  </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
+                <CardContent className="pt-0">
+                  <div className="text-foreground text-2xl font-bold">
                     {estatisticas.totalAgendamentos}
                   </div>
                   <p className="text-muted-foreground mt-1 text-xs">
@@ -481,13 +489,18 @@ export default function ReportsPage() {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-muted-foreground text-sm font-medium">
-                    Valor Total
-                  </CardTitle>
+              <Card className="border-border/40 border bg-gradient-to-br from-green-500/10 to-emerald-500/5 shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-md">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-xl border border-green-500/20 bg-green-500/10 p-2">
+                      <DollarSignIcon className="h-5 w-5 text-green-600" />
+                    </div>
+                    <CardTitle className="text-muted-foreground text-sm font-semibold">
+                      Valor Total
+                    </CardTitle>
+                  </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-0">
                   <div className="text-2xl font-bold text-green-600">
                     {formatCurrencyInCents(estatisticas.totalValor)}
                   </div>
@@ -497,14 +510,19 @@ export default function ReportsPage() {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-muted-foreground text-sm font-medium">
-                    Valor Médio
-                  </CardTitle>
+              <Card className="border-border/40 border bg-gradient-to-br from-purple-500/10 to-violet-500/5 shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-md">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-xl border border-purple-500/20 bg-purple-500/10 p-2">
+                      <DollarSignIcon className="h-5 w-5 text-purple-600" />
+                    </div>
+                    <CardTitle className="text-muted-foreground text-sm font-semibold">
+                      Valor Médio
+                    </CardTitle>
+                  </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
+                <CardContent className="pt-0">
+                  <div className="text-foreground text-2xl font-bold">
                     {formatCurrencyInCents(
                       Math.round(
                         estatisticas.totalValor /
@@ -523,12 +541,16 @@ export default function ReportsPage() {
 
         {agendamentos.length > 0 &&
           Object.keys(estatisticas.porMedico).length > 1 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <DollarSignIcon className="h-5 w-5" />
-                  Resumo por Médico
-                </CardTitle>
+            <Card className="from-background to-muted/20 border-border/40 border bg-gradient-to-br shadow-sm transition-all duration-300 hover:shadow-md">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="bg-primary/10 border-primary/20 rounded-lg border p-2">
+                    <UserIcon className="text-primary h-5 w-5" />
+                  </div>
+                  <CardTitle className="text-lg font-semibold">
+                    Resumo por Médico
+                  </CardTitle>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -560,12 +582,14 @@ export default function ReportsPage() {
           )}
 
         {Object.keys(agendamentosPorMes).length === 0 ? (
-          <Card>
+          <Card className="from-background to-muted/20 border-border/40 border bg-gradient-to-br shadow-sm">
             <CardContent className="py-12">
-              <div className="space-y-3 text-center">
-                <FileTextIcon className="text-muted-foreground mx-auto h-12 w-12" />
+              <div className="space-y-4 text-center">
+                <div className="bg-muted/30 border-border/30 mx-auto w-fit rounded-xl border p-3">
+                  <FileTextIcon className="text-muted-foreground h-12 w-12" />
+                </div>
                 <div>
-                  <h3 className="text-lg font-medium">
+                  <h3 className="text-lg font-semibold">
                     {loading
                       ? "Carregando relatórios..."
                       : "Nenhum agendamento encontrado"}
@@ -600,19 +624,32 @@ export default function ReportsPage() {
               const nomeCompleteMes = `${meses[parseInt(mesNum) - 1]} de ${anoNum}`;
 
               return (
-                <Card key={mesAno}>
-                  <CardHeader>
+                <Card
+                  key={mesAno}
+                  className="from-background to-muted/20 border-border/40 border bg-gradient-to-br shadow-sm transition-all duration-300 hover:shadow-md"
+                >
+                  <CardHeader className="pb-4">
                     <CardTitle className="flex items-center justify-between">
-                      <span className="flex items-center gap-2">
-                        <CalendarIcon className="h-5 w-5" />
-                        {nomeCompleteMes}
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <div className="bg-primary/10 border-primary/20 rounded-lg border p-2">
+                          <CalendarIcon className="text-primary h-5 w-5" />
+                        </div>
+                        <span className="text-lg font-semibold">
+                          {nomeCompleteMes}
+                        </span>
+                      </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline">
+                        <Badge
+                          variant="outline"
+                          className="border-blue-200 bg-blue-50 text-blue-700"
+                        >
                           {ags.length}{" "}
                           {ags.length === 1 ? "agendamento" : "agendamentos"}
                         </Badge>
-                        <Badge variant="secondary">
+                        <Badge
+                          variant="secondary"
+                          className="border-green-200 bg-green-50 text-green-700"
+                        >
                           {formatCurrencyInCents(
                             ags.reduce(
                               (sum, ag) => sum + ag.appointmentPriceInCents,
@@ -624,7 +661,7 @@ export default function ReportsPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="rounded-md border">
+                    <div className="border-border/30 bg-background/50 overflow-hidden rounded-lg border">
                       <Table>
                         <TableHeader>
                           <TableRow>

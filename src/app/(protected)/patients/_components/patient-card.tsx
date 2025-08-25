@@ -46,43 +46,58 @@ const PatientCard = ({ patient }: PatientCardProps) => {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <Avatar className="h-10 w-10">
-            <AvatarFallback>{patientInitials}</AvatarFallback>
+    <Card className="from-background to-muted/20 border-border/40 border bg-gradient-to-br shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-md">
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-3">
+          <Avatar className="border-primary/20 h-10 w-10 border-2 shadow-sm">
+            <AvatarFallback className="from-primary/20 to-primary/10 text-primary bg-gradient-to-br font-semibold">
+              {patientInitials}
+            </AvatarFallback>
           </Avatar>
-          <div>
-            <h3 className="text-sm font-medium">{patient.name}</h3>
-            <p className="text-muted-foreground text-sm">
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-sm font-semibold">{patient.name}</h3>
+            <p className="text-muted-foreground text-xs">
               {getSexLabel(patient.sex)}
             </p>
           </div>
         </div>
       </CardHeader>
-      <Separator />
-      <CardContent className="flex flex-col gap-2">
-        <Badge variant="outline">
-          <Mail className="mr-1 h-3 w-3" />
-          {patient.email}
+      <Separator className="bg-border/30" />
+      <CardContent className="flex flex-col gap-2 py-3">
+        <Badge
+          variant="outline"
+          className="border-border/40 hover:bg-muted/50 justify-start transition-colors"
+        >
+          <Mail className="text-muted-foreground mr-2 h-3 w-3" />
+          <span className="truncate text-xs">{patient.email}</span>
         </Badge>
-        <Badge variant="outline">
-          <Phone className="mr-1 h-3 w-3" />
-          {formatPhoneNumber(patient.phoneNumber)}
+        <Badge
+          variant="outline"
+          className="border-border/40 hover:bg-muted/50 justify-start transition-colors"
+        >
+          <Phone className="text-muted-foreground mr-2 h-3 w-3" />
+          <span className="text-xs">
+            {formatPhoneNumber(patient.phoneNumber)}
+          </span>
         </Badge>
-        <Badge variant="outline">
-          <User className="mr-1 h-3 w-3" />
-          {getSexLabel(patient.sex)}
+        <Badge
+          variant="outline"
+          className="border-border/40 hover:bg-muted/50 justify-start transition-colors"
+        >
+          <User className="text-muted-foreground mr-2 h-3 w-3" />
+          <span className="text-xs">{getSexLabel(patient.sex)}</span>
         </Badge>
       </CardContent>
-      <Separator />
-      <CardFooter className="flex flex-col gap-2">
+      <Separator className="bg-border/30" />
+      <CardFooter className="pt-3">
         <Dialog
           open={isUpsertPatientDialogOpen}
           onOpenChange={setIsUpsertPatientDialogOpen}
         >
           <DialogTrigger asChild>
-            <Button className="w-full">Ver detalhes</Button>
+            <Button className="bg-primary hover:bg-primary/90 w-full font-medium transition-colors">
+              Ver detalhes
+            </Button>
           </DialogTrigger>
           <UpsertPatientForm
             patient={patient}

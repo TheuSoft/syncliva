@@ -21,16 +21,18 @@ const AddPatientButton = () => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button className="bg-primary hover:bg-primary/90 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-md">
           <Plus className="mr-2 h-4 w-4" />
           Adicionar paciente
         </Button>
       </DialogTrigger>
 
-      <DialogContent>
+      <DialogContent className="from-background to-muted/20 border-border/40 border bg-gradient-to-br">
         <DialogHeader>
-          <DialogTitle>Novo paciente</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-xl font-semibold">
+            Novo paciente
+          </DialogTitle>
+          <DialogDescription className="text-muted-foreground">
             Preencha os dados para cadastrar um novo paciente.
           </DialogDescription>
         </DialogHeader>
