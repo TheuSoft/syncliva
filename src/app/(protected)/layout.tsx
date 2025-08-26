@@ -23,9 +23,11 @@ export default async function Layout({
     redirect("/authentication");
   }
 
-  // Redirecionar médicos para seu dashboard específico
+  // Redirecionar usuários baseado no role
   if (session.user.role === "doctor") {
     redirect("/doctor/dashboard");
+  } else if (session.user.role === "receptionist") {
+    redirect("/receptionist/dashboard");
   }
 
   return (

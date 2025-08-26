@@ -18,7 +18,7 @@ export async function GET() {
 
     // Retornar o role do usuário
     return NextResponse.json({ 
-      role: session.user.role || 'clinic_admin' 
+      role: session.user.role || 'admin' 
     });
   } catch (error) {
     console.error("Erro ao verificar role:", error);

@@ -10,5 +10,6 @@ export const config = {
   matcher: [
     "/(protected)/:path*",
     "/doctor/:path*",
+    "/receptionist/:path*", // ✅ NOVO
   ],
 };

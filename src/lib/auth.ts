@@ -42,8 +42,9 @@ export const auth = betterAuth({
       return {
         user: {
           ...user,
-          role: fullUser?.role || "clinic_admin",
+          role: fullUser?.role || "admin",
           doctorId: fullUser?.doctorId,
+          receptionistId: fullUser?.receptionistId, // ✅ NOVO
           clinic: clinic?.clinicId
             ? {
                 id: clinic?.clinicId,

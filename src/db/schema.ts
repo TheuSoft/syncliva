@@ -11,6 +11,13 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
+// ✅ NOVO: Enum para roles de usuário
+export const userRoleEnum = pgEnum("user_role", [
+  "admin",           // Administrador principal da clínica
+  "receptionist",    // Recepcionista
+  "doctor",          // Médico
+]);
+
 export const usersTable = pgTable("users", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -19,10 +26,11 @@ export const usersTable = pgTable("users", {
   image: text("image"),
   createdAt: timestamp("created_at").notNull(),
   updatedAt: timestamp("updated_at").notNull(),
-  // ✅ NOVO: Campo para definir o tipo de usuário
-  role: text("role").notNull().default("clinic_admin"), // clinic_admin, doctor
-  // ✅ NOVO: Referência para médico (se for um usuário médico)
+  // ✅ ATUALIZADO: Campo para definir o tipo de usuário com enum
+  role: userRoleEnum("role").notNull().default("admin"),
+  // ✅ NOVO: Referências para diferentes tipos de usuário
   doctorId: uuid("doctor_id").references(() => doctorsTable.id),
+  receptionistId: uuid("receptionist_id").references(() => receptionistsTable.id),
 });
 
 export const usersTableRelations = relations(usersTable, ({ many }) => ({
@@ -107,6 +115,7 @@ export const usersToClinicsTableRelations = relations(
 
 export const clinicsTableRelations = relations(clinicsTable, ({ many }) => ({
   doctors: many(doctorsTable),
+  receptionists: many(receptionistsTable), // ✅ NOVO
   patients: many(patientsTable),
   appointments: many(appointmentsTable),
   usersToClinics: many(usersToClinicsTable),
@@ -233,5 +242,36 @@ export const appointmentsTableRelations = relations(
       fields: [appointmentsTable.doctorId],
       references: [doctorsTable.id],
     }),
+  }),
+);
+
+// ✅ NOVO: Tabela de recepcionistas
+export const receptionistsTable = pgTable("receptionists", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  clinicId: uuid("clinic_id")
+    .notNull()
+    .references(() => clinicsTable.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  avatarImageUrl: text("avatar_image_url"),
+  // ✅ NOVO: Campos para sistema de convites (similar aos médicos)
+  email: text("email"),
+  inviteToken: text("invite_token"),
+  inviteTokenExpiresAt: timestamp("invite_token_expires_at"),
+  invitedAt: timestamp("invited_at"),
+  registeredAt: timestamp("registered_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+export const receptionistsTableRelations = relations(
+  receptionistsTable,
+  ({ many, one }) => ({
+    clinic: one(clinicsTable, {
+      fields: [receptionistsTable.clinicId],
+      references: [clinicsTable.id],
+    }),
+    appointments: many(appointmentsTable),
   }),
 );
