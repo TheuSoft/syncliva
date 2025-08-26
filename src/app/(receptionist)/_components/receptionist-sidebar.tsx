@@ -1,8 +1,8 @@
 "use client";
 
-import { CalendarDays, Home, LogOut, Users } from "lucide-react";
+import { CalendarDays, Home, LogOut, Settings, Users } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 import { Logo } from "@/components/logo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -57,6 +57,18 @@ export function ReceptionistSidebar() {
     });
   };
 
+  // Obter dados da sessão do recepcionista
+  const getReceptionistInfo = () => {
+    // Por enquanto, vamos usar dados estáticos
+    // Em uma implementação completa, você pode usar uma API para buscar os dados
+    return {
+      name: "Recepcionista",
+      initials: "R"
+    };
+  };
+
+  const receptionistInfo = getReceptionistInfo();
+
   return (
     <Sidebar>
       <SidebarHeader className="border-border/30 from-muted/20 border-b bg-gradient-to-r to-transparent p-4">
@@ -101,9 +113,9 @@ export function ReceptionistSidebar() {
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton className="w-full justify-start">
                   <Avatar className="mr-2 h-6 w-6">
-                    <AvatarFallback className="text-xs">R</AvatarFallback>
+                    <AvatarFallback className="text-xs">{receptionistInfo.initials}</AvatarFallback>
                   </Avatar>
-                  <span className="text-sm">Recepcionista</span>
+                  <span className="text-sm">{receptionistInfo.name}</span>
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -113,6 +125,12 @@ export function ReceptionistSidebar() {
                 side="right"
                 sideOffset={8}
               >
+                <DropdownMenuItem asChild>
+                  <Link href="/receptionist/profile">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Perfil</span>
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleSignOut}>
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Sair</span>

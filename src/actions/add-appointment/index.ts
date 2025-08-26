@@ -1,6 +1,6 @@
 "use server";
 
-import dayjs from "dayjs";
+
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
@@ -22,7 +22,7 @@ export const addAppointment = actionClient
     
     console.log("🔥🔥🔥 SESSION:", JSON.stringify(session, null, 2));
     
-    if (!session?.user?.role || session.user.role !== "clinic_admin") {
+    if (!session?.user?.role || (session.user.role !== "admin" && session.user.role !== "receptionist")) {
       throw new Error("Usuário não autorizado para criar agendamentos");
     }
     
@@ -30,18 +30,12 @@ export const addAppointment = actionClient
       throw new Error("Clínica não encontrada na sessão");
     }
     
-    // Convert date and time to datetime  
-    const appointmentDateTime = dayjs(parsedInput.date)
-      .set("hour", parseInt(parsedInput.time.split(":")[0]))
-      .set("minute", parseInt(parsedInput.time.split(":")[1]))
-      .toDate();
-    
     // Create appointment
     await db.insert(appointmentsTable).values({
       patientId: parsedInput.patientId,
       doctorId: parsedInput.doctorId,
       clinicId: session.user.clinic.id,
-      date: appointmentDateTime,
+      date: parsedInput.scheduledAt,
       appointmentPriceInCents: parsedInput.appointmentPriceInCents,
       status: "pending",
     });
@@ -49,6 +43,7 @@ export const addAppointment = actionClient
     console.log("🔥🔥🔥 APPOINTMENT CREATED SUCCESSFULLY");
     
     revalidatePath("/appointments");
+    revalidatePath("/receptionist/appointments");
     
     return { success: true };
   });
