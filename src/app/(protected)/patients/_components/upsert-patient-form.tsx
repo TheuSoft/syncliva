@@ -114,29 +114,39 @@ export default function UpsertPatientForm({
     try {
       setIsSubmitting(true);
       const result = await upsertPatient({ ...values, id: patient?.id }); // ✅ Session handled on server
-      
+
       // Verifica se há erros de validação
       if (result.validationErrors) {
         // Erros de validação são tratados automaticamente pelo form
         console.log("Erros de validação:", result.validationErrors);
         // Exibir o primeiro erro de validação encontrado
-        toast.error("Há campos inválidos no formulário. Verifique e tente novamente.");
+        toast.error(
+          "Há campos inválidos no formulário. Verifique e tente novamente.",
+        );
       }
       // Verifica se há erro específico retornado pela action
-      else if (result.data && typeof result.data === 'object' && 'error' in result.data) {
+      else if (
+        result.data &&
+        typeof result.data === "object" &&
+        "error" in result.data
+      ) {
         // Se a action retornou um erro específico (como CPF duplicado)
         const errorMessage = result.data.error as string;
         toast.error(errorMessage);
         // Se for erro de CPF, destacar o campo no formulário
         if (errorMessage.includes("CPF")) {
-          form.setError("cpf", { 
-            type: "manual", 
-            message: "CPF já cadastrado no sistema"
+          form.setError("cpf", {
+            type: "manual",
+            message: "CPF já cadastrado no sistema",
           });
         }
-      } 
+      }
       // Verifica se a operação foi bem-sucedida
-      else if (result.data && typeof result.data === 'object' && 'success' in result.data) {
+      else if (
+        result.data &&
+        typeof result.data === "object" &&
+        "success" in result.data
+      ) {
         // Se não houve erro, tudo ocorreu bem
         toast.success("Paciente salvo com sucesso!");
         onSuccess();
@@ -168,7 +178,10 @@ export default function UpsertPatientForm({
               <FormItem>
                 <FormLabel>Nome</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Input
+                    {...field}
+                    placeholder="Digite o nome completo do paciente"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -183,7 +196,11 @@ export default function UpsertPatientForm({
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input type="email" {...field} />
+                  <Input
+                    type="email"
+                    {...field}
+                    placeholder="exemplo@email.com"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -205,6 +222,7 @@ export default function UpsertPatientForm({
                     value={field.value || ""}
                     onValueChange={(v) => field.onChange(v.formattedValue)}
                     customInput={Input}
+                    placeholder="(11) 99999-9999"
                   />
                 </FormControl>
                 <FormMessage />
@@ -250,11 +268,16 @@ export default function UpsertPatientForm({
                     value={field.value || ""}
                     onValueChange={(v) => field.onChange(v.formattedValue)}
                     customInput={Input}
-                    className={fieldState.error ? "border-red-500 focus-visible:ring-red-500" : ""}
+                    className={
+                      fieldState.error
+                        ? "border-red-500 focus-visible:ring-red-500"
+                        : ""
+                    }
                     disabled={!!patient} // Desabilitar edição do CPF quando estiver editando um paciente existente
+                    placeholder="123.456.789-01"
                   />
                 </FormControl>
-                <FormMessage className="text-red-500 font-medium" />
+                <FormMessage className="font-medium text-red-500" />
               </FormItem>
             )}
           />
@@ -274,6 +297,7 @@ export default function UpsertPatientForm({
                     value={field.value || ""}
                     onValueChange={(v) => field.onChange(v.formattedValue)}
                     customInput={Input}
+                    placeholder="12345-678"
                   />
                 </FormControl>
                 <FormMessage />
@@ -290,7 +314,7 @@ export default function UpsertPatientForm({
                 <FormItem>
                   <FormLabel>Rua</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input {...field} placeholder="Ex: Rua das Flores" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -304,7 +328,7 @@ export default function UpsertPatientForm({
                 <FormItem>
                   <FormLabel>Número</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input {...field} placeholder="123" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -318,7 +342,7 @@ export default function UpsertPatientForm({
                 <FormItem>
                   <FormLabel>Bairro</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input {...field} placeholder="Ex: Centro" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -332,7 +356,7 @@ export default function UpsertPatientForm({
                 <FormItem>
                   <FormLabel>Cidade</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input {...field} placeholder="Ex: São Paulo" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -346,7 +370,7 @@ export default function UpsertPatientForm({
                 <FormItem>
                   <FormLabel>UF</FormLabel>
                   <FormControl>
-                    <Input {...field} maxLength={2} />
+                    <Input {...field} maxLength={2} placeholder="SP" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

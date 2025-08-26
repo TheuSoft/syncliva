@@ -41,7 +41,9 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -79,6 +81,28 @@ const AddAppointmentForm = ({
   onSuccess,
   isOpen,
 }: AddAppointmentFormProps) => {
+  // Função helper para agrupar horários por período do dia
+  const groupTimesByPeriod = (
+    times: Array<{ value: string; available: boolean; label: string }>,
+  ) => {
+    const morning = times.filter((time) => {
+      const hour = parseInt(time.value.split(":")[0]);
+      return hour >= 6 && hour < 12;
+    });
+
+    const afternoon = times.filter((time) => {
+      const hour = parseInt(time.value.split(":")[0]);
+      return hour >= 12 && hour < 18;
+    });
+
+    const evening = times.filter((time) => {
+      const hour = parseInt(time.value.split(":")[0]);
+      return hour >= 18 && hour <= 23;
+    });
+
+    return { morning, afternoon, evening };
+  };
+
   const form = useForm<z.infer<typeof formSchema>>({
     shouldUnregister: true,
     resolver: zodResolver(formSchema),
@@ -95,7 +119,11 @@ const AddAppointmentForm = ({
   const selectedPatientId = form.watch("patientId");
   const selectedDate = form.watch("date");
 
-  const { data: availableTimes } = useQuery({
+  const {
+    data: availableTimes,
+    isLoading: isLoadingTimes,
+    error: timesError,
+  } = useQuery({
     queryKey: ["available-times", selectedDate, selectedDoctorId],
     queryFn: () =>
       getAvailableTimes({
@@ -104,6 +132,24 @@ const AddAppointmentForm = ({
       }),
     enabled: !!selectedDate && !!selectedDoctorId,
   });
+
+  // Debug logs
+  useEffect(() => {
+    console.log("🔍 Debug - Add Appointment Form:", {
+      selectedDate,
+      selectedDoctorId,
+      availableTimes,
+      isLoadingTimes,
+      timesError,
+      enabled: !!selectedDate && !!selectedDoctorId,
+    });
+  }, [
+    selectedDate,
+    selectedDoctorId,
+    availableTimes,
+    isLoadingTimes,
+    timesError,
+  ]);
 
   // Atualizar o preço quando o médico for selecionado
   useEffect(() => {
@@ -267,6 +313,7 @@ const AddAppointmentForm = ({
                   allowNegative={false}
                   disabled={!selectedDoctorId}
                   customInput={Input}
+                  placeholder="R$ 0,00"
                 />
                 <FormMessage />
               </FormItem>
@@ -331,15 +378,77 @@ const AddAppointmentForm = ({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {availableTimes?.data?.map((time) => (
-                      <SelectItem
-                        key={time.value}
-                        value={time.value}
-                        disabled={!time.available}
-                      >
-                        {time.label} {!time.available && "(Indisponível)"}
+                    {isLoadingTimes && (
+                      <SelectItem value="loading" disabled>
+                        Carregando horários...
                       </SelectItem>
-                    ))}
+                    )}
+                    {!isLoadingTimes &&
+                      (!availableTimes?.data ||
+                        availableTimes.data.length === 0) && (
+                        <SelectItem value="no-times" disabled>
+                          Nenhum horário disponível
+                        </SelectItem>
+                      )}
+                    {!isLoadingTimes &&
+                      availableTimes?.data &&
+                      availableTimes.data.length > 0 &&
+                      (() => {
+                        const { morning, afternoon, evening } =
+                          groupTimesByPeriod(availableTimes.data);
+
+                        return (
+                          <>
+                            {morning.length > 0 && (
+                              <SelectGroup>
+                                <SelectLabel>Manhã</SelectLabel>
+                                {morning.map((time) => (
+                                  <SelectItem
+                                    key={time.value}
+                                    value={time.value}
+                                    disabled={!time.available}
+                                  >
+                                    {time.label}{" "}
+                                    {!time.available && "(Indisponível)"}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            )}
+
+                            {afternoon.length > 0 && (
+                              <SelectGroup>
+                                <SelectLabel>Tarde</SelectLabel>
+                                {afternoon.map((time) => (
+                                  <SelectItem
+                                    key={time.value}
+                                    value={time.value}
+                                    disabled={!time.available}
+                                  >
+                                    {time.label}{" "}
+                                    {!time.available && "(Indisponível)"}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            )}
+
+                            {evening.length > 0 && (
+                              <SelectGroup>
+                                <SelectLabel>Noite</SelectLabel>
+                                {evening.map((time) => (
+                                  <SelectItem
+                                    key={time.value}
+                                    value={time.value}
+                                    disabled={!time.available}
+                                  >
+                                    {time.label}{" "}
+                                    {!time.available && "(Indisponível)"}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            )}
+                          </>
+                        );
+                      })()}
                   </SelectContent>
                 </Select>
                 <FormMessage />

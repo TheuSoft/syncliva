@@ -150,7 +150,10 @@ const UpsertDoctorForm = ({
               <FormItem>
                 <FormLabel>Nome</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Input
+                    {...field}
+                    placeholder="Digite o nome completo do médico"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -202,6 +205,7 @@ const UpsertDoctorForm = ({
                   thousandSeparator="."
                   customInput={Input}
                   prefix="R$"
+                  placeholder="R$ 0,00"
                 />
                 <FormMessage />
               </FormItem>
@@ -283,8 +287,6 @@ const UpsertDoctorForm = ({
                   <SelectContent>
                     <SelectGroup>
                       <SelectLabel>Manhã</SelectLabel>
-                      <SelectItem value="05:00:00">05:00</SelectItem>
-                      <SelectItem value="05:30:00">05:30</SelectItem>
                       <SelectItem value="06:00:00">06:00</SelectItem>
                       <SelectItem value="06:30:00">06:30</SelectItem>
                       <SelectItem value="07:00:00">07:00</SelectItem>
@@ -325,8 +327,6 @@ const UpsertDoctorForm = ({
                       <SelectItem value="21:30:00">21:30</SelectItem>
                       <SelectItem value="22:00:00">22:00</SelectItem>
                       <SelectItem value="22:30:00">22:30</SelectItem>
-                      <SelectItem value="23:00:00">23:00</SelectItem>
-                      <SelectItem value="23:30:00">23:30</SelectItem>
                     </SelectGroup>
                   </SelectContent>
                 </Select>
@@ -352,8 +352,6 @@ const UpsertDoctorForm = ({
                   <SelectContent>
                     <SelectGroup>
                       <SelectLabel>Manhã</SelectLabel>
-                      <SelectItem value="05:00:00">05:00</SelectItem>
-                      <SelectItem value="05:30:00">05:30</SelectItem>
                       <SelectItem value="06:00:00">06:00</SelectItem>
                       <SelectItem value="06:30:00">06:30</SelectItem>
                       <SelectItem value="07:00:00">07:00</SelectItem>

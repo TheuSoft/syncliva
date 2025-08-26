@@ -17,19 +17,14 @@ dayjs.extend(utc);
 export const upsertDoctor = actionClient
   .schema(upsertDoctorSchema)
   .action(async ({ parsedInput }) => {
-    const availableFromTime = parsedInput.availableFromTime; // 15:30:00
-    const availableToTime = parsedInput.availableToTime; // 16:00:00
+    // ✅ CORREÇÃO: Manter horários em formato local (Brasil) sem conversão UTC
+    const availableFromTime = parsedInput.availableFromTime; // Ex: "08:00:00"
+    const availableToTime = parsedInput.availableToTime; // Ex: "18:00:00"
 
-    const availableFromTimeUTC = dayjs()
-      .set("hour", parseInt(availableFromTime.split(":")[0]))
-      .set("minute", parseInt(availableFromTime.split(":")[1]))
-      .set("second", parseInt(availableFromTime.split(":")[2]))
-      .utc();
-    const availableToTimeUTC = dayjs()
-      .set("hour", parseInt(availableToTime.split(":")[0]))
-      .set("minute", parseInt(availableToTime.split(":")[1]))
-      .set("second", parseInt(availableToTime.split(":")[2]))
-      .utc();
+    console.log("🎯 Saving doctor availability (local time):", {
+      from: availableFromTime,
+      to: availableToTime,
+    });
 
     const session = await auth.api.getSession({
       headers: await headers(),
@@ -46,15 +41,15 @@ export const upsertDoctor = actionClient
         ...parsedInput,
         id: parsedInput.id,
         clinicId: session?.user.clinic?.id,
-        availableFromTime: availableFromTimeUTC.format("HH:mm:ss"),
-        availableToTime: availableToTimeUTC.format("HH:mm:ss"),
+        availableFromTime: availableFromTime, // ✅ Salvar como está (horário local)
+        availableToTime: availableToTime, // ✅ Salvar como está (horário local)
       })
       .onConflictDoUpdate({
         target: [doctorsTable.id],
         set: {
           ...parsedInput,
-          availableFromTime: availableFromTimeUTC.format("HH:mm:ss"),
-          availableToTime: availableToTimeUTC.format("HH:mm:ss"),
+          availableFromTime: availableFromTime, // ✅ Salvar como está (horário local)
+          availableToTime: availableToTime, // ✅ Salvar como está (horário local)
         },
       });
     revalidatePath("/doctors");
