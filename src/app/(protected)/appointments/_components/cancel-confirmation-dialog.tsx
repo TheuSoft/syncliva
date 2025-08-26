@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { convertToLocalDate } from "@/helpers/date";
 import type { AppointmentWithRelations } from "@/types/appointments";
 
 interface CancelConfirmationDialogProps {
@@ -116,14 +117,20 @@ export function CancelConfirmationDialog({
                   <Calendar className="text-muted-foreground h-4 w-4" />
                   <span className="font-medium">Data:</span>
                   <span>
-                    {format(appointment.date, "dd/MM/yyyy", { locale: ptBR })}
+                    {format(
+                      convertToLocalDate(appointment.date),
+                      "dd/MM/yyyy",
+                      { locale: ptBR },
+                    )}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <Clock className="text-muted-foreground h-4 w-4" />
                   <span className="font-medium">Horário:</span>
                   <span>
-                    {format(appointment.date, "HH:mm", { locale: ptBR })}
+                    {format(convertToLocalDate(appointment.date), "HH:mm", {
+                      locale: ptBR,
+                    })}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">

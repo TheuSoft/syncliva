@@ -27,6 +27,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
+import { convertToLocalDate } from "@/helpers/date";
 import type { AppointmentWithRelations } from "@/types/appointments";
 
 interface DeleteConfirmationDialogProps {
@@ -148,7 +149,11 @@ export function DeleteConfirmationDialog({
                   <Calendar className="text-muted-foreground h-4 w-4" />
                   <span className="font-medium">Data:</span>
                   <span>
-                    {format(appointment.date, "dd/MM/yyyy", { locale: ptBR })}
+                    {format(
+                      convertToLocalDate(appointment.date),
+                      "dd/MM/yyyy",
+                      { locale: ptBR },
+                    )}
                   </span>
                 </div>
 
@@ -156,7 +161,9 @@ export function DeleteConfirmationDialog({
                   <Clock className="text-muted-foreground h-4 w-4" />
                   <span className="font-medium">Horário:</span>
                   <span>
-                    {format(appointment.date, "HH:mm", { locale: ptBR })}
+                    {format(convertToLocalDate(appointment.date), "HH:mm", {
+                      locale: ptBR,
+                    })}
                   </span>
                 </div>
 

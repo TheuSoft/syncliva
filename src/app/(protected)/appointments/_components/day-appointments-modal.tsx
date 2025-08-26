@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { convertToLocalDate } from "@/helpers/date";
 import type { AppointmentWithRelations } from "@/types/appointments";
 
 interface DayAppointmentsModalProps {
@@ -84,7 +85,10 @@ export function DayAppointmentsModal({
                     <div className="space-y-4">
                       <div className="flex items-start justify-between">
                         <div className="text-primary bg-primary/10 border-primary/20 rounded-full border px-3 py-1.5 text-lg font-bold shadow-sm">
-                          {format(appointment.date, "HH:mm")}
+                          {format(
+                            convertToLocalDate(appointment.date),
+                            "HH:mm",
+                          )}
                         </div>
                         <div
                           className={`rounded-full border px-3 py-1.5 text-xs font-semibold shadow-sm ${

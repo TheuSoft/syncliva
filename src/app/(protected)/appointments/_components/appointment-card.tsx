@@ -12,6 +12,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { formatCurrencyInCents } from "@/helpers/currency";
+import { convertToLocalDate } from "@/helpers/date";
 import { cn } from "@/lib/utils";
 import type { AppointmentWithRelations } from "@/types/appointments";
 
@@ -77,7 +78,7 @@ export function AppointmentCard({
         >
           <div className="mb-1 flex items-start justify-between">
             <div className="text-[9px] leading-tight font-semibold sm:text-[10px]">
-              {format(appointment.date, "HH:mm")}
+              {format(convertToLocalDate(appointment.date), "HH:mm")}
             </div>
             <div className="flex-shrink-0 opacity-0 transition-opacity group-hover:opacity-100">
               <MoreVertical className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
@@ -120,9 +121,13 @@ export function AppointmentCard({
             <div className="flex items-start justify-between">
               <div className="space-y-1">
                 <h4 className="text-foreground dark:text-foreground text-base font-bold">
-                  {format(appointment.date, "dd/MM/yyyy 'às' HH:mm", {
-                    locale: ptBR,
-                  })}
+                  {format(
+                    convertToLocalDate(appointment.date),
+                    "dd/MM/yyyy 'às' HH:mm",
+                    {
+                      locale: ptBR,
+                    },
+                  )}
                 </h4>
                 <div
                   className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${

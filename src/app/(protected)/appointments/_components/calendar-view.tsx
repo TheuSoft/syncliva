@@ -14,6 +14,7 @@ import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { convertToLocalDate } from "@/helpers/date";
 import { cn } from "@/lib/utils";
 import type { AppointmentWithRelations } from "@/types/appointments";
 
@@ -66,7 +67,10 @@ export function CalendarView({
     const grouped: Record<string, AppointmentWithRelations[]> = {};
 
     appointments.forEach((appointment) => {
-      const dateKey = format(appointment.date, "yyyy-MM-dd");
+      const dateKey = format(
+        convertToLocalDate(appointment.date),
+        "yyyy-MM-dd",
+      );
       if (!grouped[dateKey]) {
         grouped[dateKey] = [];
       }
