@@ -7,6 +7,7 @@ import { useMemo } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { convertToLocalDate } from "@/helpers/date";
 import type { AppointmentWithRelations } from "@/types/appointments";
 
 import { AppointmentActions } from "./appointment-actions";
@@ -36,7 +37,10 @@ export function AppointmentsTimeline({
   const groupedAppointments = useMemo(() => {
     // Ordenar por data (mais recentes primeiro)
     const sortedAppointments = [...filteredAppointments].sort((a, b) => {
-      return new Date(b.date).getTime() - new Date(a.date).getTime();
+      return (
+        convertToLocalDate(b.date).getTime() -
+        convertToLocalDate(a.date).getTime()
+      );
     });
 
     // Agrupar por mês/ano
@@ -44,7 +48,7 @@ export function AppointmentsTimeline({
     const monthGroups = new Map<string, AppointmentWithRelations[]>();
 
     sortedAppointments.forEach((appointment) => {
-      const appointmentDate = new Date(appointment.date);
+      const appointmentDate = convertToLocalDate(appointment.date);
       let monthYear = format(appointmentDate, "MMMM 'de' yyyy", {
         locale: ptBR,
       });
@@ -79,8 +83,8 @@ export function AppointmentsTimeline({
       if (monthYearB === currentMonthYearCapitalized) return 1;
 
       // Para os demais, usamos a data do primeiro agendamento para ordenação
-      const dateA = new Date(a.appointments[0].date);
-      const dateB = new Date(b.appointments[0].date);
+      const dateA = convertToLocalDate(a.appointments[0].date);
+      const dateB = convertToLocalDate(b.appointments[0].date);
 
       // Verificar se os meses são futuros ou passados em relação ao mês atual
       const isMonthAFuture = isAfter(dateA, now);
@@ -211,7 +215,7 @@ export function AppointmentsTimeline({
             {/* Lista de Agendamentos do Mês */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {monthAppointments.map((appointment) => {
-                const appointmentDate = new Date(appointment.date);
+                const appointmentDate = convertToLocalDate(appointment.date);
                 const dateStatus = getDateStatus(appointmentDate);
                 const price = appointment.appointmentPriceInCents / 100;
 
