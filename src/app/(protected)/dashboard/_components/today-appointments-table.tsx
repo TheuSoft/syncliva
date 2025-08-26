@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 import { DataTable } from "@/components/ui/data-table";
+import { convertToLocalDate } from "@/helpers/date";
 import type { AppointmentWithRelations } from "@/types/appointments";
 
 interface TodayAppointmentsTableProps {
@@ -21,9 +22,13 @@ export default function TodayAppointmentsTable({
       header: "Data",
       accessorFn: (row) => row.date,
       cell: ({ row }) => {
-        return format(row.original.date, "dd/MM/yyyy 'às' HH:mm", {
-          locale: ptBR,
-        });
+        return format(
+          convertToLocalDate(row.original.date),
+          "dd/MM/yyyy 'às' HH:mm",
+          {
+            locale: ptBR,
+          },
+        );
       },
       enableSorting: true,
     },

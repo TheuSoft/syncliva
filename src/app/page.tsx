@@ -80,9 +80,9 @@ export default function Home() {
               Sistema em Produção
             </div>
 
-            <h1 className="text-foreground mb-4 text-4xl leading-tight font-bold tracking-tight sm:mb-6 sm:text-5xl md:text-6xl lg:text-7xl">
+            <h1 className="text-foreground mb-4 text-4xl leading-relaxed font-bold tracking-tight sm:mb-6 sm:text-5xl md:text-6xl lg:text-7xl">
               Gestão de Clínicas
-              <span className="block bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent dark:from-blue-400 dark:via-purple-400 dark:to-indigo-400">
+              <span className="block bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text pb-2 text-transparent dark:from-blue-400 dark:via-purple-400 dark:to-indigo-400">
                 Inteligente
               </span>
             </h1>

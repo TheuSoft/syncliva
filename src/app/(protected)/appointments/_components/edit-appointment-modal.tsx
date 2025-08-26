@@ -41,6 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { convertToLocalDate } from "@/helpers/date";
 import { cn } from "@/lib/utils";
 import type { AppointmentWithRelations } from "@/types/appointments";
 
@@ -95,7 +96,7 @@ export function EditAppointmentModal({
       setSelectedDate(new Date(appointment.date));
       setCustomPrice(appointment.appointmentPriceInCents / 100);
       setSelectedTime(
-        format(appointment.date, "HH:mm"), // Ex: "14:00"
+        format(convertToLocalDate(appointment.date), "HH:mm"), // Ex: "14:00"
       );
     }
   }, [appointment, open]);

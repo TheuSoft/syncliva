@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { convertToLocalDate } from "@/helpers/date";
 import type { AppointmentWithRelations } from "@/types/appointments";
 
 import { AppointmentsTimeline } from "./appointments-timeline";
@@ -118,7 +119,8 @@ const SearchableAppointmentsList = ({
     const matchesMonth =
       selectedMonth === "all"
         ? true
-        : format(new Date(appointment.date), "yyyy-MM") === selectedMonth;
+        : format(convertToLocalDate(appointment.date), "yyyy-MM") ===
+          selectedMonth;
 
     const matchesDoctor =
       selectedDoctor === "all" ? true : appointment.doctorId === selectedDoctor;

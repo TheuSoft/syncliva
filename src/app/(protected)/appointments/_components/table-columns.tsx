@@ -17,6 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { convertToLocalDate } from "@/helpers/date";
 import type { AppointmentWithRelations } from "@/types/appointments";
 
 import { CancelConfirmationDialog } from "./cancel-confirmation-dialog";
@@ -182,9 +183,13 @@ export const createAppointmentsTableColumns = (
     header: "Data",
     accessorFn: (row) => row.date,
     cell: ({ row }) => {
-      return format(row.original.date, "dd/MM/yyyy 'às' HH:mm", {
-        locale: ptBR,
-      });
+      return format(
+        convertToLocalDate(row.original.date),
+        "dd/MM/yyyy 'às' HH:mm",
+        {
+          locale: ptBR,
+        },
+      );
     },
     enableSorting: true,
     sortingFn: "datetime",
