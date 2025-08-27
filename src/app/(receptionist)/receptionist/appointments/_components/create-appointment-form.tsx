@@ -7,6 +7,8 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
+import { addAppointment } from "@/actions/add-appointment";
+import { getDoctorPrice } from "@/actions/get-doctor-price";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -24,9 +26,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-import { addAppointment } from "@/actions/add-appointment";
-import { getDoctorPrice } from "@/actions/get-doctor-price";
 
 const createAppointmentSchema = z.object({
   patientId: z.string().min(1, "Paciente é obrigatório"),
@@ -59,17 +58,15 @@ export default function CreateAppointmentForm({
   });
 
   const addAppointmentAction = useAction(addAppointment, {
-    onSuccess: (data) => {
+    onSuccess: ({ data }) => {
       if (data?.success) {
         toast.success("Agendamento criado com sucesso!");
         form.reset();
         onSuccess();
-      } else {
-        toast.error(data?.error || "Erro ao criar agendamento");
       }
     },
-    onError: (error) => {
-      toast.error(error?.message || "Erro ao criar agendamento");
+    onError: ({ error }) => {
+      toast.error(error?.serverError || "Erro ao criar agendamento");
     },
   });
 
@@ -85,7 +82,7 @@ export default function CreateAppointmentForm({
         scheduledAt,
         appointmentPriceInCents: doctorPrice,
       });
-    } catch (error) {
+    } catch {
       toast.error("Erro ao buscar preço do médico");
     }
   };

@@ -1,8 +1,11 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 
+import { getDoctorsListAction } from "@/actions/get-doctors-list";
+import { getReceptionistPatients } from "@/actions/get-receptionist-patients";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,11 +15,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
-import { useQuery } from "@tanstack/react-query";
-
-import { getDoctorsListAction } from "@/actions/get-doctors-list";
-import { getReceptionistPatients } from "@/actions/get-receptionist-patients";
 
 import CreateAppointmentForm from "./create-appointment-form";
 

@@ -143,8 +143,15 @@ const AddAppointmentForm = ({
   });
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
+    // Combinar data e hora em um único campo scheduledAt
+    const scheduledAt = new Date(values.date);
+    const [hours, minutes] = values.time.split(':').map(Number);
+    scheduledAt.setHours(hours, minutes, 0, 0);
+
     createAppointmentAction.execute({
-      ...values,
+      patientId: values.patientId,
+      doctorId: values.doctorId,
+      scheduledAt,
       appointmentPriceInCents: values.appointmentPrice * 100,
     });
   };

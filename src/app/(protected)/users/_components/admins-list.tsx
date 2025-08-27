@@ -2,7 +2,9 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { MoreHorizontal, User } from "lucide-react";
+import { useState } from "react";
 
+import { getAdmins } from "@/actions/get-admins";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,13 +23,39 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { getAdmins } from "@/actions/get-admins";
+import UserDetailsDialog from "./user-details-dialog";
+import EditUserForm from "./edit-user-form";
 
 export default function AdminsList() {
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [selectedUserForEdit, setSelectedUserForEdit] = useState<{
+    id: string;
+    name: string;
+    email: string;
+    role: "admin" | "receptionist";
+  } | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
   const { data: admins, isLoading, error } = useQuery({
     queryKey: ["admins"],
     queryFn: () => getAdmins(),
   });
+
+  const handleViewDetails = (userId: string) => {
+    setSelectedUserId(userId);
+    setIsDetailsDialogOpen(true);
+  };
+
+  const handleEditUser = (admin: { id: string; name: string; email: string }) => {
+    setSelectedUserForEdit({
+      id: admin.id,
+      name: admin.name,
+      email: admin.email,
+      role: "admin",
+    });
+    setIsEditDialogOpen(true);
+  };
 
   if (isLoading) {
     return (
@@ -105,8 +133,12 @@ export default function AdminsList() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>Ver detalhes</DropdownMenuItem>
-                      <DropdownMenuItem>Editar</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleViewDetails(admin.id)}>
+                        Ver detalhes
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleEditUser(admin)}>
+                        Editar
+                      </DropdownMenuItem>
                       <DropdownMenuItem className="text-destructive">
                         Remover
                       </DropdownMenuItem>
@@ -118,6 +150,28 @@ export default function AdminsList() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Dialog de detalhes do usuário */}
+      {selectedUserId && (
+        <UserDetailsDialog
+          userId={selectedUserId}
+          open={isDetailsDialogOpen}
+          onOpenChange={setIsDetailsDialogOpen}
+        />
+      )}
+
+      {/* Dialog de edição do usuário */}
+      {selectedUserForEdit && (
+        <EditUserForm
+          user={selectedUserForEdit}
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          onSuccess={() => {
+            // Recarregar a lista de administradores
+            window.location.reload();
+          }}
+        />
+      )}
     </div>
   );
 }

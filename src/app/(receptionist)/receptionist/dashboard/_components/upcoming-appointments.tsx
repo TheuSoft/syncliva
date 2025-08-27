@@ -3,9 +3,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { CalendarDays, Clock, User } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-
 import { getReceptionistUpcomingAppointments } from "@/actions/get-receptionist-upcoming-appointments";
+import { Badge } from "@/components/ui/badge";
 
 export default function UpcomingAppointments() {
   const { data: appointments, isLoading } = useQuery({

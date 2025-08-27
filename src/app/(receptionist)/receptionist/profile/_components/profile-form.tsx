@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
+import { updateReceptionistProfile } from "@/actions/update-receptionist-profile";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,8 +20,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-
-import { updateReceptionistProfile } from "@/actions/update-receptionist-profile";
 
 const profileSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
@@ -49,7 +48,7 @@ export default function ProfileForm() {
     onError: ({ error }) => {
       console.error("Erro ao atualizar perfil:", error);
       toast.error("Erro ao atualizar perfil", {
-        description: error.error?.serverError || "Tente novamente",
+        description: error.serverError || "Tente novamente",
       });
     },
   });

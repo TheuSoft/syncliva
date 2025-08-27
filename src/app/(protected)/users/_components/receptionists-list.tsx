@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { MoreHorizontal, Users } from "lucide-react";
+import { useState } from "react";
 
 import { getReceptionists } from "@/actions/get-receptionists";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -22,13 +23,40 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+import EditUserForm from "./edit-user-form";
 import InviteReceptionistButton from "./invite-receptionist-button";
+import UserDetailsDialog from "./user-details-dialog";
 
 export default function ReceptionistsList() {
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [selectedUserForEdit, setSelectedUserForEdit] = useState<{
+    id: string;
+    name: string;
+    email: string;
+    role: "admin" | "receptionist";
+  } | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
   const { data: receptionists, isLoading, error } = useQuery({
     queryKey: ["receptionists"],
     queryFn: () => getReceptionists(),
   });
+
+  const handleViewDetails = (userId: string) => {
+    setSelectedUserId(userId);
+    setIsDetailsDialogOpen(true);
+  };
+
+  const handleEditUser = (receptionist: { id: string; name: string; email: string | null }) => {
+    setSelectedUserForEdit({
+      id: receptionist.id,
+      name: receptionist.name,
+      email: receptionist.email || "",
+      role: "receptionist",
+    });
+    setIsEditDialogOpen(true);
+  };
 
   if (isLoading) {
     return (
@@ -122,8 +150,12 @@ export default function ReceptionistsList() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>Ver detalhes</DropdownMenuItem>
-                      <DropdownMenuItem>Editar</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleViewDetails(receptionist.id)}>
+                        Ver detalhes
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleEditUser(receptionist)}>
+                        Editar
+                      </DropdownMenuItem>
                       {!receptionist.registeredAt && (
                         <DropdownMenuItem>Reenviar convite</DropdownMenuItem>
                       )}
@@ -138,6 +170,28 @@ export default function ReceptionistsList() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Dialog de detalhes do usuário */}
+      {selectedUserId && (
+        <UserDetailsDialog
+          userId={selectedUserId}
+          open={isDetailsDialogOpen}
+          onOpenChange={setIsDetailsDialogOpen}
+        />
+      )}
+
+      {/* Dialog de edição do usuário */}
+      {selectedUserForEdit && (
+        <EditUserForm
+          user={selectedUserForEdit}
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          onSuccess={() => {
+            // Recarregar a lista de recepcionistas
+            window.location.reload();
+          }}
+        />
+      )}
     </div>
   );
 }

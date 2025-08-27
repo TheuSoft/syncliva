@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, gte, sql, lt, ne } from "drizzle-orm";
+import { and, eq, gte, lt, ne } from "drizzle-orm";
 import { headers } from "next/headers";
 
 import { db } from "@/db";

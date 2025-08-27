@@ -1,11 +1,10 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays, User, Clock } from "lucide-react";
-
-import { Badge } from "@/components/ui/badge";
+import { CalendarDays, Clock,User } from "lucide-react";
 
 import { getReceptionistActivities } from "@/actions/get-receptionist-activities";
+import { Badge } from "@/components/ui/badge";
 
 export default function RecentActivities() {
   const { data: activities, isLoading } = useQuery({
@@ -62,7 +61,7 @@ export default function RecentActivities() {
     }
   };
 
-  const getActivityText = (activity: any) => {
+  const getActivityText = (activity: { type: string; patientName?: string; description?: string }) => {
     switch (activity.type) {
       case "appointment_created":
         return `Novo agendamento criado para ${activity.patientName}`;

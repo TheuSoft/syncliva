@@ -1,10 +1,11 @@
 "use client";
 
 import { Mail } from "lucide-react";
-import { useState } from "react";
 import { useAction } from "next-safe-action/hooks";
+import { useState } from "react";
 import { toast } from "sonner";
 
+import { inviteReceptionist } from "@/actions/invite-receptionist";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,8 +17,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-import { inviteReceptionist } from "@/actions/invite-receptionist";
 
 interface InviteReceptionistButtonProps {
   receptionistId: string;
@@ -35,18 +34,18 @@ export default function InviteReceptionistButton({
 
   const inviteAction = useAction(inviteReceptionist, {
     onSuccess: ({ data }) => {
-      if (data?.success) {
+      if (data?.success && 'inviteLink' in data) {
         toast.success("Convite enviado com sucesso!", {
           description: `Link de convite: ${data.inviteLink}`,
         });
         setOpen(false);
-      } else {
-        toast.error(data?.error || "Erro ao enviar convite");
+      } else if ('error' in data) {
+        toast.error(data.error || "Erro ao enviar convite");
       }
     },
     onError: ({ error }) => {
       toast.error("Erro ao enviar convite", {
-        description: error.error?.serverError || "Tente novamente",
+        description: error.serverError || "Tente novamente",
       });
     },
   });

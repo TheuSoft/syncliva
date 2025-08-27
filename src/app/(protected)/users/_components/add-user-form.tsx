@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
+import { createUser } from "@/actions/create-user";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -24,8 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-import { createUser } from "@/actions/create-user";
 
 const createUserSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
@@ -62,7 +61,7 @@ export default function AddUserForm({ onSuccess }: AddUserFormProps) {
     onError: ({ error }) => {
       console.error("Erro ao criar usuário:", error);
       toast.error("Erro ao criar usuário", {
-        description: error.error?.serverError || "Tente novamente",
+        description: error.serverError || "Tente novamente",
       });
     },
   });

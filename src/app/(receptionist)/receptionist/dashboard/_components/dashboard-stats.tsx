@@ -1,11 +1,10 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays, Users, Clock, Stethoscope } from "lucide-react";
-
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CalendarDays, Clock, Stethoscope,Users } from "lucide-react";
 
 import { getReceptionistStats } from "@/actions/get-receptionist-stats";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function DashboardStats() {
   const { data: stats, isLoading } = useQuery({

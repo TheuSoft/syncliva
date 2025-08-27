@@ -4,16 +4,16 @@ import { useQuery } from "@tanstack/react-query";
 import { MoreHorizontal, Search, Users } from "lucide-react";
 import { useState } from "react";
 
+import { getReceptionistPatients } from "@/actions/get-receptionist-patients";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -22,8 +22,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-import { getReceptionistPatients } from "@/actions/get-receptionist-patients";
 
 export default function PatientsList() {
   const [searchTerm, setSearchTerm] = useState("");

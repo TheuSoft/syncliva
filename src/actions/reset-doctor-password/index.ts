@@ -29,7 +29,7 @@ export const resetDoctorPassword = actionClient
       headers: await headers(),
     });
     
-    if (!session?.user || session.user.role !== "clinic_admin") {
+    if (!session?.user || session.user.role !== "admin") {
       throw new Error("Não autorizado. Apenas administradores podem redefinir senhas.");
     }
     
