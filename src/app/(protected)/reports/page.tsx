@@ -42,6 +42,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatCurrencyInCents } from "@/helpers/currency";
+import { convertToLocalDate } from "@/helpers/date";
 import type { AppointmentWithRelations } from "@/types/appointments";
 
 import type { RelatorioFiltro } from "./relatorio";
@@ -115,7 +116,8 @@ export default function ReportsPage() {
   // Agrupa agendamentos por mês
   const agendamentosPorMes = agendamentos.reduce(
     (acc: Record<string, AppointmentWithRelations[]>, ag) => {
-      const key = `${new Date(ag.date).getMonth() + 1}/${new Date(ag.date).getFullYear()}`;
+      const localDate = convertToLocalDate(ag.date);
+      const key = `${localDate.getMonth() + 1}/${localDate.getFullYear()}`;
       if (!acc[key]) acc[key] = [];
       acc[key].push(ag);
       return acc;
@@ -166,133 +168,180 @@ export default function ReportsPage() {
 
   const estatisticas = calcularEstatisticas();
 
-  // Função para gerar PDF
+  // Função para gerar PDF otimizado para gestão
   const gerarPDF = () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.width;
 
-    // Título
-    doc.setFontSize(20);
-    doc.setFont("helvetica", "bold");
-    doc.text("Relatório de Agendamentos", pageWidth / 2, 20, {
-      align: "center",
-    });
+    // ✅ Cabeçalho compacto
+    doc.setFillColor(52, 73, 94);
+    doc.rect(0, 0, pageWidth, 30, "F");
 
-    // Período
-    doc.setFontSize(12);
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("Syncliva - Relatório de Agendamentos", 20, 20);
+
+    // Período no cabeçalho
+    doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
     const periodo =
       tipoRelatorio === "anual"
-        ? `Período: Ano ${ano}`
-        : `Período: ${mes}/${ano}`;
-    const medico =
-      doctorId === "all"
-        ? "Todos os Médicos"
-        : doctors.find((d) => d.id === doctorId)?.name || "Médico Selecionado";
-    doc.text(periodo, 20, 35);
-    doc.text(`Médico: ${medico}`, 20, 45);
+        ? `${ano}`
+        : `${mes.toString().padStart(2, "0")}/${ano}`;
     doc.text(
-      `Tipo: ${tipoRelatorio === "anual" ? "Relatório Anual" : "Relatório Mensal"}`,
+      `${periodo} | ${new Date().toLocaleDateString("pt-BR")}`,
+      pageWidth - 20,
       20,
-      55,
+      { align: "right" },
     );
 
-    // Resumo
-    doc.setFontSize(14);
+    let yPos = 45;
+
+    // ✅ Métricas principais em linha compacta
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
-    doc.text("Resumo Geral", 20, 70);
 
+    const metricas = [
+      `Total: ${estatisticas.totalAgendamentos} agendamentos`,
+      `Faturamento: ${formatCurrencyInCents(estatisticas.totalValor)}`,
+      `Ticket médio: ${formatCurrencyInCents(Math.round(estatisticas.totalValor / estatisticas.totalAgendamentos || 0))}`,
+    ];
+
+    metricas.forEach((metrica, index) => {
+      const xPos = 20 + index * 60;
+      doc.text(metrica, xPos, yPos);
+    });
+
+    yPos += 15;
+
+    // ✅ Status breakdown compacto
     doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text(
-      `Total de Agendamentos: ${estatisticas.totalAgendamentos}`,
-      20,
-      80,
-    );
-    doc.text(
-      `Valor Total: ${formatCurrencyInCents(estatisticas.totalValor)}`,
-      20,
-      90,
-    );
-
-    let yPosition = 105;
-
-    // Resumo por médico
-    if (Object.keys(estatisticas.porMedico).length > 1) {
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.text("Por Médico:", 20, yPosition);
-      yPosition += 10;
-
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      Object.entries(estatisticas.porMedico).forEach(([medico, dados]) => {
-        doc.text(
-          `${medico}: ${dados.count} agendamentos - ${formatCurrencyInCents(dados.valor)}`,
-          25,
-          yPosition,
-        );
-        yPosition += 8;
-      });
-      yPosition += 10;
-    }
-
-    // Resumo por status
-    doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
-    doc.text("Por Status:", 20, yPosition);
-    yPosition += 10;
+    doc.text("Status dos Agendamentos:", 20, yPos);
+    yPos += 8;
 
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
     Object.entries(estatisticas.porStatus).forEach(([status, dados]) => {
       const statusLabel =
         status === "pending"
-          ? "Pendente"
+          ? "Pendentes"
           : status === "confirmed"
-            ? "Agendamento pago"
-            : "Cancelado";
+            ? "Confirmados"
+            : "Cancelados";
+      const porcentagem = (
+        (dados.count / estatisticas.totalAgendamentos) *
+        100
+      ).toFixed(1);
       doc.text(
-        `${statusLabel}: ${dados.count} agendamentos - ${formatCurrencyInCents(dados.valor)}`,
+        `${statusLabel}: ${dados.count} (${porcentagem}%) - ${formatCurrencyInCents(dados.valor)}`,
         25,
-        yPosition,
+        yPos,
       );
-      yPosition += 8;
+      yPos += 6;
     });
 
-    // Tabela detalhada
+    // ✅ Por médico (apenas se múltiplos)
+    if (Object.keys(estatisticas.porMedico).length > 1) {
+      yPos += 5;
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text("Por Profissional:", 20, yPos);
+      yPos += 8;
+
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      Object.entries(estatisticas.porMedico).forEach(([medico, dados]) => {
+        const porcentagem = (
+          (dados.count / estatisticas.totalAgendamentos) *
+          100
+        ).toFixed(1);
+        doc.text(
+          `${medico}: ${dados.count} (${porcentagem}%) - ${formatCurrencyInCents(dados.valor)}`,
+          25,
+          yPos,
+        );
+        yPos += 6;
+      });
+    }
+
+    // ✅ Tabela otimizada - apenas informações essenciais
     if (agendamentos.length > 0) {
-      yPosition += 10;
+      yPos += 10;
 
       const tableData = agendamentos.map((ag) => [
-        ag.patient?.name || "",
-        ag.doctor?.name || "",
-        new Date(ag.date).toLocaleDateString("pt-BR"),
-        new Date(ag.date).toLocaleTimeString("pt-BR", {
+        convertToLocalDate(ag.date).toLocaleDateString("pt-BR", {
+          day: "2-digit",
+          month: "2-digit",
+        }),
+        convertToLocalDate(ag.date).toLocaleTimeString("pt-BR", {
           hour: "2-digit",
           minute: "2-digit",
         }),
+        ag.patient?.name || "",
+        ag.doctor?.name || "",
         ag.status === "pending"
           ? "Pendente"
           : ag.status === "confirmed"
-            ? "Agendamento pago"
+            ? "Pago"
             : "Cancelado",
         formatCurrencyInCents(ag.appointmentPriceInCents),
       ]);
 
       autoTable(doc, {
-        head: [["Paciente", "Médico", "Data", "Horário", "Status", "Valor"]],
+        head: [["Data", "Hora", "Paciente", "Médico", "Status", "Valor"]],
         body: tableData,
-        startY: yPosition,
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [66, 139, 202] },
+        startY: yPos,
+        styles: {
+          fontSize: 8,
+          cellPadding: 2,
+        },
+        headStyles: {
+          fillColor: [52, 73, 94],
+          textColor: [255, 255, 255],
+          fontSize: 9,
+          fontStyle: "bold",
+        },
+        columnStyles: {
+          0: { cellWidth: 20 }, // Data
+          1: { cellWidth: 18 }, // Hora
+          2: { cellWidth: 45 }, // Paciente
+          3: { cellWidth: 40 }, // Médico
+          4: { cellWidth: 20 }, // Status
+          5: { cellWidth: 25, halign: "right" }, // Valor
+        },
         margin: { left: 20, right: 20 },
+        alternateRowStyles: { fillColor: [248, 249, 250] },
       });
     }
 
-    // Salvar PDF
+    // ✅ Rodapé compacto
+    const finalTableY =
+      (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable
+        ?.finalY || yPos + 20;
+    const footerY = finalTableY + 15;
+
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 100, 100);
+    doc.text(
+      `Syncliva | Gerado em ${new Date().toLocaleDateString("pt-BR")}`,
+      20,
+      footerY,
+    );
+
+    // ✅ Salvar PDF com nome descritivo
     const tipoArquivo = tipoRelatorio === "anual" ? "anual" : "mensal";
-    const nomeArquivo = `relatorio-agendamentos-${tipoArquivo}-${ano}-${doctorId === "all" ? "todos" : "medico"}.pdf`;
+    const periodoFinal =
+      tipoRelatorio === "anual"
+        ? ano
+        : `${ano}-${String(mes).padStart(2, "0")}`;
+    const medicoFinal =
+      doctorId === "all" ? "todos-profissionais" : "medico-especifico";
+    const nomeArquivo = `SyncLiva-Relatorio-${tipoArquivo}-${periodoFinal}-${medicoFinal}.pdf`;
+
     doc.save(nomeArquivo);
   };
 
@@ -691,16 +740,17 @@ export default function ReportsPage() {
                                   </div>
                                 </TableCell>
                                 <TableCell>
-                                  {new Date(a.date).toLocaleDateString("pt-BR")}
+                                  {convertToLocalDate(
+                                    a.date,
+                                  ).toLocaleDateString("pt-BR")}
                                 </TableCell>
                                 <TableCell>
-                                  {new Date(a.date).toLocaleTimeString(
-                                    "pt-BR",
-                                    {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    },
-                                  )}
+                                  {convertToLocalDate(
+                                    a.date,
+                                  ).toLocaleTimeString("pt-BR", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
                                 </TableCell>
                                 <TableCell>
                                   {getStatusBadge(a.status)}
