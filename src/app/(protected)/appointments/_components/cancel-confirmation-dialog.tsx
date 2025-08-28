@@ -89,12 +89,11 @@ export function CancelConfirmationDialog({
                 Cancelar Agendamento
               </AlertDialogTitle>
               <p className="text-muted-foreground text-sm">
-                Ao confirmar, o status será alterado para "cancelado".
+                Ao confirmar, o status será alterado para &quot;cancelado&quot;.
               </p>
             </div>
           </div>
         </AlertDialogHeader>
-
         <AlertDialogDescription asChild>
           <div className="space-y-4">
             <div className="rounded-lg border border-orange-200 bg-orange-50 p-4">

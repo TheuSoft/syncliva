@@ -4,19 +4,12 @@ import utc from "dayjs/plugin/utc";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { auth } from "@/lib/auth";
-
 import { getDoctorAppointments } from "@/actions/get-doctor-appointments";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  PageContainer,
-  PageContent,
-  PageDescription,
-  PageHeader,
-  PageTitle,
-} from "@/components/ui/page-container";
+import { PageContainer } from "@/components/ui/page-container";
 import { formatCurrencyInCents } from "@/helpers/currency";
+import { auth } from "@/lib/auth";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);

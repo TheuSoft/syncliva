@@ -1,10 +1,10 @@
 "use client";
 
+import { format, isAfter, isBefore, isToday, startOfDay } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
-import { format, isAfter, isBefore, isToday, startOfDay } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { Calendar, Clock, Stethoscope, User } from "lucide-react";
 import { useMemo } from "react";
 

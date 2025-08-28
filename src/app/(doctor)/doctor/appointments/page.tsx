@@ -108,8 +108,8 @@ export default async function DoctorAppointments() {
   }
 
   const appointments = result.appointments;
-  const doctorId =
-    appointments.length > 0 ? appointments[0].doctor.id : undefined;
+  // const doctorId =
+  //   appointments.length > 0 ? appointments[0].doctor.id : undefined;
 
   // Extrair pacientes e médicos para o modal de edição
   const patients = appointments.map((app) => ({

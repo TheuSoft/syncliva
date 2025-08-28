@@ -5,14 +5,7 @@ import { ptBR } from "date-fns/locale";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
-import {
-  AlertTriangle,
-  Calendar,
-  Clock,
-  Stethoscope,
-  Trash2,
-  User,
-} from "lucide-react";
+import { Calendar, Clock, Stethoscope, Trash2, User } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 

@@ -1,10 +1,10 @@
 "use client";
 
+// import { format } from "date-fns";
+// import { ptBR } from "date-fns/locale";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import {
   Calendar,
   Download,
@@ -112,17 +112,17 @@ export default function ReportsPage() {
     }
   };
 
-  // Agrupa agendamentos por mês
-  const agendamentosPorMes = agendamentos.reduce(
-    (acc: Record<string, AppointmentWithRelations[]>, ag) => {
-      const localDate = dayjs(ag.date).tz(BRAZIL_TIMEZONE).toDate();
-      const key = `${localDate.getMonth() + 1}/${localDate.getFullYear()}`;
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(ag);
-      return acc;
-    },
-    {},
-  );
+  // Agrupa agendamentos por mês (comentado pois não está sendo usado)
+  // const agendamentosPorMes = agendamentos.reduce(
+  //   (acc: Record<string, AppointmentWithRelations[]>, ag) => {
+  //     const localDate = dayjs(ag.date).tz(BRAZIL_TIMEZONE).toDate();
+  //     const key = `${localDate.getMonth() + 1}/${localDate.getFullYear()}`;
+  //     if (!acc[key]) acc[key] = [];
+  //     acc[key].push(ag);
+  //     return acc;
+  //   },
+  //   {},
+  // );
 
   // Calcula estatísticas
   const calcularEstatisticas = () => {
