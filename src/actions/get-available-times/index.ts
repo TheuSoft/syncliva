@@ -16,11 +16,15 @@ import { actionClient } from "@/lib/next-safe-action";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
+// Configurar timezone padrão para Brasil
+const BRAZIL_TIMEZONE = "America/Sao_Paulo";
+
 export const getAvailableTimes = actionClient
   .schema(
     z.object({
       doctorId: z.string(),
-      date: z.string().date(), // YYYY-MM-DD,
+      date: z.string().date(), // YYYY-MM-DD
+      excludeAppointmentId: z.string().optional(), // ID do agendamento a ser excluído da verificação
     }),
   )
   .action(async ({ parsedInput }) => {
@@ -36,9 +40,6 @@ export const getAvailableTimes = actionClient
 
     console.log("🎯 Session user:", session.user);
 
-    // Remover verificação de clínica - médicos podem não ter clínica diretamente
-    // A validação será feita através do médico específico
-
     const doctor = await db.query.doctorsTable.findFirst({
       where: eq(doctorsTable.id, parsedInput.doctorId),
     });
@@ -50,7 +51,6 @@ export const getAvailableTimes = actionClient
       throw new Error("Médico não encontrado");
     }
 
-    // ✅ ADICIONAR: Log dos horários de disponibilidade do médico
     console.log("🎯 Doctor availability:", {
       fromTime: doctor.availableFromTime,
       toTime: doctor.availableToTime,
@@ -58,13 +58,13 @@ export const getAvailableTimes = actionClient
       toWeekDay: doctor.availableToWeekDay,
     });
 
-    // ✅ VERIFICAR: Se os horários de disponibilidade estão definidos
     if (!doctor.availableFromTime || !doctor.availableToTime) {
       console.log("🚨 Doctor availability times not configured");
       throw new Error("Horários de disponibilidade do médico não configurados");
     }
 
-    const selectedDayOfWeek = dayjs(parsedInput.date).day();
+    // Verificar se o médico trabalha no dia da semana selecionado
+    const selectedDayOfWeek = dayjs(parsedInput.date).tz(BRAZIL_TIMEZONE).day();
     console.log("🎯 Selected day of week:", selectedDayOfWeek);
 
     const doctorIsAvailable =
@@ -77,22 +77,36 @@ export const getAvailableTimes = actionClient
       console.log("🚨 Doctor not available on this day of week");
       return [];
     }
-    // Buscar apenas agendamentos ativos (não cancelados) do médico na data específica
+
+    // Buscar agendamentos ativos (não cancelados) do médico
+    const whereConditions = [
+      eq(appointmentsTable.doctorId, parsedInput.doctorId),
+      ne(appointmentsTable.status, "canceled"),
+    ];
+
+    // Adicionar condição para excluir o agendamento atual se fornecido
+    if (parsedInput.excludeAppointmentId) {
+      whereConditions.push(
+        ne(appointmentsTable.id, parsedInput.excludeAppointmentId),
+      );
+    }
+
     const appointments = await db.query.appointmentsTable.findMany({
-      where: and(
-        eq(appointmentsTable.doctorId, parsedInput.doctorId),
-        ne(appointmentsTable.status, "canceled"), // ✅ Excluir agendamentos cancelados
-      ),
+      where: and(...whereConditions),
     });
 
-    // Filtrar agendamentos para a data selecionada e obter horários ocupados
+    // Filtrar agendamentos para a data selecionada (considerando timezone)
     const appointmentsOnSelectedDate = appointments
       .filter((appointment) => {
-        return dayjs(appointment.date).isSame(parsedInput.date, "day");
+        // Converter data do agendamento para timezone local e comparar
+        const appointmentDateLocal = dayjs(appointment.date)
+          .tz(BRAZIL_TIMEZONE)
+          .format("YYYY-MM-DD");
+        return appointmentDateLocal === parsedInput.date;
       })
       .map((appointment) => {
-        // ✅ CORREÇÃO: Usar format para garantir consistência de formato
-        return dayjs(appointment.date).format("HH:mm:ss");
+        // Extrair horário em timezone local
+        return dayjs(appointment.date).tz(BRAZIL_TIMEZONE).format("HH:mm:ss");
       });
 
     console.log(
@@ -100,36 +114,32 @@ export const getAvailableTimes = actionClient
       appointmentsOnSelectedDate,
     );
 
-    // Gerar todos os slots de tempo possíveis (a cada 30 minutos)
+    // Gerar todos os slots de tempo possíveis
     const timeSlots = generateTimeSlots();
     console.log("🎯 All time slots:", timeSlots);
 
-    // ✅ CORREÇÃO: Simplificar a lógica de filtragem dos horários do médico
+    // Filtrar slots dentro do horário de disponibilidade do médico
     const doctorTimeSlots = timeSlots.filter((timeSlot) => {
-      // Converter horário do slot para comparação
       const [slotHour, slotMinute] = timeSlot.split(":").map(Number);
       const slotTime = slotHour * 60 + slotMinute; // Em minutos
 
-      // ✅ CORREÇÃO: Garantir que estamos comparando horários em formato local (Brasil)
-      // Os horários do médico devem estar em formato "HH:mm:ss" local
-      const doctorFromTime = doctor.availableFromTime; // Ex: "08:00:00"
-      const doctorToTime = doctor.availableToTime; // Ex: "18:00:00"
+      // Horários de disponibilidade do médico (formato HH:mm:ss)
+      const [fromHour, fromMinute] = doctor.availableFromTime
+        .split(":")
+        .map(Number);
+      const [toHour, toMinute] = doctor.availableToTime.split(":").map(Number);
+
+      const fromTime = fromHour * 60 + fromMinute; // Em minutos
+      const toTime = toHour * 60 + toMinute; // Em minutos
 
       console.log(
         "🎯 Comparing slot",
         timeSlot,
         "with doctor hours",
-        doctorFromTime,
+        doctor.availableFromTime,
         "to",
-        doctorToTime,
+        doctor.availableToTime,
       );
-
-      // Converter horários de disponibilidade do médico (assumindo formato HH:mm:ss)
-      const [fromHour, fromMinute] = doctorFromTime.split(":").map(Number);
-      const [toHour, toMinute] = doctorToTime.split(":").map(Number);
-
-      const fromTime = fromHour * 60 + fromMinute; // Em minutos
-      const toTime = toHour * 60 + toMinute; // Em minutos
 
       console.log(
         "🎯 Slot time in minutes:",
@@ -148,20 +158,59 @@ export const getAvailableTimes = actionClient
     });
 
     console.log("🎯 Doctor available time slots:", doctorTimeSlots);
-    console.log(
-      "🎯 Doctor hours: from",
-      doctor.availableFromTime,
-      "to",
-      doctor.availableToTime,
-    );
 
+    // Criar resultado final com disponibilidade
     const result = doctorTimeSlots.map((time) => {
       return {
         value: time,
         available: !appointmentsOnSelectedDate.includes(time),
-        label: time.substring(0, 5),
+        label: time.substring(0, 5), // Mostrar apenas HH:mm
       };
     });
+
+    // Se estamos editando um agendamento, garantir que o horário atual esteja na lista
+    if (parsedInput.excludeAppointmentId) {
+      // Buscar o agendamento atual para obter seu horário
+      const currentAppointment = await db.query.appointmentsTable.findFirst({
+        where: eq(appointmentsTable.id, parsedInput.excludeAppointmentId),
+      });
+
+      if (currentAppointment) {
+        const currentAppointmentTime = dayjs(currentAppointment.date)
+          .tz(BRAZIL_TIMEZONE)
+          .format("HH:mm:ss");
+
+        const currentAppointmentTimeShort = currentAppointmentTime.substring(
+          0,
+          5,
+        );
+
+        // Verificar se o horário atual já está na lista
+        const timeExists = result.some(
+          (t) => t.value === currentAppointmentTime,
+        );
+
+        if (!timeExists) {
+          // Adicionar o horário atual à lista como disponível
+          result.push({
+            value: currentAppointmentTime,
+            available: true,
+            label: currentAppointmentTimeShort,
+          });
+        } else {
+          // Marcar o horário atual como disponível
+          const timeIndex = result.findIndex(
+            (t) => t.value === currentAppointmentTime,
+          );
+          if (timeIndex !== -1) {
+            result[timeIndex].available = true;
+          }
+        }
+      }
+    }
+
+    // Ordenar a lista de horários
+    result.sort((a, b) => a.value.localeCompare(b.value));
 
     console.log("🎯 Final available times result:", result);
     console.log(
@@ -176,7 +225,10 @@ export const getAvailableTimes = actionClient
       "to:",
       doctor.availableToWeekDay,
     );
-    console.log("🎯 Selected date day of week:", dayjs(parsedInput.date).day());
+    console.log(
+      "🎯 Selected date day of week:",
+      dayjs(parsedInput.date).tz(BRAZIL_TIMEZONE).day(),
+    );
 
     return result;
   });

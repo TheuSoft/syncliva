@@ -1,48 +1,39 @@
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+
+import { auth } from "@/lib/auth";
 
 import { getDoctorAppointments } from "@/actions/get-doctor-appointments";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { PageContainer } from "@/components/ui/page-container";
+import {
+  PageContainer,
+  PageContent,
+  PageDescription,
+  PageHeader,
+  PageTitle,
+} from "@/components/ui/page-container";
 import { formatCurrencyInCents } from "@/helpers/currency";
-import { auth } from "@/lib/auth";
 
-// Forçar renderização dinâmica devido ao uso de headers()
-export const dynamic = "force-dynamic";
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
-function getStatusColor(status: string) {
-  switch (status) {
-    case "confirmed":
-      return "bg-green-100 text-green-800";
-    case "pending":
-      return "bg-yellow-100 text-yellow-800";
-    case "canceled":
-      return "bg-red-100 text-red-800";
-    default:
-      return "bg-gray-100 text-gray-800";
-  }
-}
+// Configurar timezone padrão para Brasil
+const BRAZIL_TIMEZONE = "America/Sao_Paulo";
 
-function getStatusText(status: string) {
-  switch (status) {
-    case "confirmed":
-      return "Agendamento pago";
-    case "pending":
-      return "Pendente";
-    case "canceled":
-      return "Cancelado";
-    default:
-      return status;
-  }
-}
-
-export default async function DoctorAppointments() {
-  // Obter a sessão do médico (já validada no layout)
+export default async function DoctorAppointmentsPage() {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
 
-  if (!session?.user || !session.user.doctorId) {
+  if (!session?.user?.role || session.user.role !== "doctor") {
+    redirect("/");
+  }
+
+  if (!session.user.doctorId) {
     return (
       <PageContainer>
         <div className="space-y-6">
@@ -57,7 +48,7 @@ export default async function DoctorAppointments() {
 
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <p className="text-red-500">Erro: Médico não encontrado</p>
+              <p className="text-red-500">Erro: ID do médico não encontrado</p>
             </CardContent>
           </Card>
         </div>
@@ -91,6 +82,32 @@ export default async function DoctorAppointments() {
   }
 
   const appointments = result.appointments;
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "confirmed":
+        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300";
+      case "pending":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
+      case "canceled":
+        return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300";
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "confirmed":
+        return "Confirmado";
+      case "pending":
+        return "Pendente";
+      case "canceled":
+        return "Cancelado";
+      default:
+        return status;
+    }
+  };
 
   return (
     <PageContainer>
@@ -132,13 +149,19 @@ export default async function DoctorAppointments() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-medium">
-                      {new Date(appointment.date).toLocaleDateString("pt-BR")}
+                      {dayjs(appointment.date)
+                        .tz(BRAZIL_TIMEZONE)
+                        .toDate()
+                        .toLocaleDateString("pt-BR")}
                     </p>
                     <p className="text-muted-foreground text-sm">
-                      {new Date(appointment.date).toLocaleTimeString("pt-BR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {dayjs(appointment.date)
+                        .tz(BRAZIL_TIMEZONE)
+                        .toDate()
+                        .toLocaleTimeString("pt-BR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                     </p>
                   </div>
                 </div>

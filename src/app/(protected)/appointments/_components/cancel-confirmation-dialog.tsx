@@ -2,6 +2,9 @@
 
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import {
   AlertTriangle,
   Calendar,
@@ -25,8 +28,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { convertToLocalDate } from "@/helpers/date";
 import type { AppointmentWithRelations } from "@/types/appointments";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+// Configurar timezone padrão para Brasil
+const BRAZIL_TIMEZONE = "America/Sao_Paulo";
 
 interface CancelConfirmationDialogProps {
   appointment: AppointmentWithRelations | null;
@@ -81,7 +89,7 @@ export function CancelConfirmationDialog({
                 Cancelar Agendamento
               </AlertDialogTitle>
               <p className="text-muted-foreground text-sm">
-                Ao confirmar, o status será alterado para “cancelado”.
+                Ao confirmar, o status será alterado para "cancelado".
               </p>
             </div>
           </div>
@@ -98,47 +106,49 @@ export function CancelConfirmationDialog({
 
             <div className="space-y-3">
               <h4 className="text-sm font-medium">Detalhes:</h4>
-              <div className="bg-muted/30 space-y-2 rounded-lg border p-3">
-                <div className="flex items-center gap-2 text-sm">
-                  <User className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-                  <span className="font-medium">Paciente:</span>
-                  <span className="font-medium text-blue-700 dark:text-blue-300">
-                    {appointment.patient.name}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Stethoscope className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-                  <span className="font-medium">Médico:</span>
-                  <span className="font-medium text-blue-700 dark:text-blue-300">
-                    {appointment.doctor.name}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
                   <Calendar className="text-muted-foreground h-4 w-4" />
-                  <span className="font-medium">Data:</span>
-                  <span>
+                  <span className="text-sm">
                     {format(
-                      convertToLocalDate(appointment.date),
+                      dayjs(appointment.date).tz(BRAZIL_TIMEZONE).toDate(),
                       "dd/MM/yyyy",
                       { locale: ptBR },
                     )}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-sm">
+
+                <div className="flex items-center gap-2">
                   <Clock className="text-muted-foreground h-4 w-4" />
-                  <span className="font-medium">Horário:</span>
-                  <span>
-                    {format(convertToLocalDate(appointment.date), "HH:mm", {
-                      locale: ptBR,
-                    })}
+                  <span className="text-sm">
+                    {format(
+                      dayjs(appointment.date).tz(BRAZIL_TIMEZONE).toDate(),
+                      "HH:mm",
+                      { locale: ptBR },
+                    )}
                   </span>
                 </div>
+
+                <div className="flex items-center gap-2">
+                  <User className="text-muted-foreground h-4 w-4" />
+                  <span className="text-sm">{appointment.patient.name}</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Stethoscope className="text-muted-foreground h-4 w-4" />
+                  <span className="text-sm">Dr. {appointment.doctor.name}</span>
+                </div>
+
+                <Separator />
+
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Status atual:</span>
-                  <Badge className="bg-yellow-100 text-yellow-800">
-                    {appointment.status === "pending"
-                      ? "Pendente"
-                      : appointment.status}
+                  <span className="text-sm font-medium">Valor:</span>
+                  <Badge variant="secondary">
+                    {new Intl.NumberFormat("pt-BR", {
+                      style: "currency",
+                      currency: "BRL",
+                    }).format(appointment.appointmentPriceInCents / 100)}
                   </Badge>
                 </div>
               </div>
@@ -146,10 +156,8 @@ export function CancelConfirmationDialog({
           </div>
         </AlertDialogDescription>
 
-        <Separator />
-
-        <AlertDialogFooter className="gap-2">
-          <AlertDialogCancel disabled={isLoading}>Voltar</AlertDialogCancel>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isLoading}>Cancelar</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirmCancel}
             disabled={isLoading}

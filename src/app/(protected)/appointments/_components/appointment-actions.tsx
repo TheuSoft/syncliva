@@ -17,7 +17,7 @@ import {
 import type { AppointmentWithRelations } from "@/types/appointments";
 
 import { CancelConfirmationDialog } from "./cancel-confirmation-dialog";
-import { DeleteConfirmationDialog } from "./delete-confirmation-modal";
+import { DeleteConfirmationModal } from "./delete-confirmation-modal";
 import { ErrorDialog } from "./error-dialog";
 
 interface AppointmentActionsProps {
@@ -156,7 +156,7 @@ export function AppointmentActions({
         onError={handleCancelError}
       />
 
-      <DeleteConfirmationDialog
+      <DeleteConfirmationModal
         appointment={appointment}
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}

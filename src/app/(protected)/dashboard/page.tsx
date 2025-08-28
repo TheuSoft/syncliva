@@ -19,7 +19,7 @@ import { db } from "@/db";
 import { appointmentsTable, doctorsTable } from "@/db/schema"; // ✅ Removido patientsTable
 import { auth } from "@/lib/auth";
 
-import { appointmentsTableColumns } from "../appointments/_components/table-columns";
+import { columns as appointmentsTableColumns } from "../appointments/_components/table-columns";
 import AppointmentsChart from "./_components/appointments-chart";
 import { DatePicker } from "./_components/date-picker";
 import StatsCards from "./_components/stats-cards";

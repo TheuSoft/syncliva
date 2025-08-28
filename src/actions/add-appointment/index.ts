@@ -1,5 +1,8 @@
 "use server";
 
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
@@ -9,6 +12,12 @@ import { auth } from "@/lib/auth";
 import { actionClient } from "@/lib/next-safe-action";
 
 import { addAppointmentSchema } from "./schema";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+// Configurar timezone padrão para Brasil
+const BRAZIL_TIMEZONE = "America/Sao_Paulo";
 
 export const addAppointment = actionClient
   .schema(addAppointmentSchema)
@@ -32,27 +41,34 @@ export const addAppointment = actionClient
       throw new Error("Clínica não encontrada na sessão");
     }
 
-    // ✅ CORREÇÃO: Criar data/hora em horário local brasileiro sem conversões UTC
+    // Criar data/hora em horário local brasileiro e converter para UTC
     const [hours, minutes] = parsedInput.time.split(":").map(Number);
 
-    // Criar objeto Date diretamente em horário local
-    const appointmentDate = new Date(parsedInput.date);
-    appointmentDate.setHours(hours, minutes, 0, 0);
+    // Criar data local brasileira
+    const localDateTime = dayjs(parsedInput.date)
+      .tz(BRAZIL_TIMEZONE)
+      .hour(hours)
+      .minute(minutes)
+      .second(0)
+      .millisecond(0);
+
+    // Converter para UTC para salvar no banco
+    const appointmentDate = localDateTime.utc().toDate();
 
     console.log("🔥 Original date:", parsedInput.date);
     console.log("🔥 Original time:", parsedInput.time);
-    console.log("🔥 Final appointment date (local):", appointmentDate);
     console.log(
-      "🔥 Final appointment date (ISO):",
-      appointmentDate.toISOString(),
+      "🔥 Local date time:",
+      localDateTime.format("YYYY-MM-DD HH:mm:ss"),
     );
+    console.log("🔥 UTC date time for DB:", appointmentDate.toISOString());
 
     // Create appointment
     await db.insert(appointmentsTable).values({
       patientId: parsedInput.patientId,
       doctorId: parsedInput.doctorId,
       clinicId: session.user.clinic.id,
-      date: appointmentDate, // ✅ Usando Date em horário local
+      date: appointmentDate,
       appointmentPriceInCents: parsedInput.appointmentPriceInCents,
       status: "pending",
     });

@@ -2,13 +2,16 @@
 
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import { CalendarIcon, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NumericFormat } from "react-number-format";
 import { toast } from "sonner";
 
 import { editAppointment } from "@/actions/edit-appointment";
-import { getAvailableTimes } from "@/actions/get-available-times"; // ajuste caminho se necessário
+import { getAvailableTimes } from "@/actions/get-available-times";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,13 +40,20 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { convertToLocalDate } from "@/helpers/date";
 import { cn } from "@/lib/utils";
 import type { AppointmentWithRelations } from "@/types/appointments";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+// Configurar timezone padrão para Brasil
+const BRAZIL_TIMEZONE = "America/Sao_Paulo";
 
 type Patient = { id: string; name: string; email: string };
 
@@ -89,15 +99,40 @@ export function EditAppointmentModal({
 
   const selectedDoctor = doctors.find((d) => d.id === selectedDoctorId);
 
+  // Função helper para agrupar horários por período do dia
+  const groupTimesByPeriod = (
+    times: Array<{ value: string; available: boolean; label: string }>,
+  ) => {
+    const morning = times.filter((time) => {
+      const hour = parseInt(time.value.split(":")[0]);
+      return hour >= 6 && hour < 12;
+    });
+
+    const afternoon = times.filter((time) => {
+      const hour = parseInt(time.value.split(":")[0]);
+      return hour >= 12 && hour < 18;
+    });
+
+    const evening = times.filter((time) => {
+      const hour = parseInt(time.value.split(":")[0]);
+      return hour >= 18 && hour <= 23;
+    });
+
+    return { morning, afternoon, evening };
+  };
+
   useEffect(() => {
     if (appointment && open) {
       setSelectedPatientId(appointment.patientId);
       setSelectedDoctorId(appointment.doctorId);
       setSelectedDate(new Date(appointment.date));
       setCustomPrice(appointment.appointmentPriceInCents / 100);
-      setSelectedTime(
-        format(convertToLocalDate(appointment.date), "HH:mm"), // Ex: "14:00"
-      );
+      // Converter data UTC para horário local brasileiro para exibição
+      const currentTime = dayjs(appointment.date)
+        .tz(BRAZIL_TIMEZONE)
+        .format("HH:mm:ss");
+      console.log("🎯 Setting selected time:", currentTime);
+      setSelectedTime(currentTime);
     }
   }, [appointment, open]);
 
@@ -107,14 +142,27 @@ export function EditAppointmentModal({
         const res = await getAvailableTimes({
           doctorId: selectedDoctorId,
           date: format(selectedDate, "yyyy-MM-dd"),
+          excludeAppointmentId: appointment?.id, // Excluir o agendamento atual da verificação
         });
+        console.log("🎯 Fetched available times:", res.data);
         setAvailableTimes(res.data || []);
       } else {
         setAvailableTimes([]);
       }
     }
     fetchTimes();
-  }, [selectedDoctorId, selectedDate]);
+  }, [selectedDoctorId, selectedDate, appointment?.id]);
+
+  // Garantir que o horário atual seja definido quando os horários disponíveis forem carregados
+  useEffect(() => {
+    if (appointment && availableTimes.length > 0 && !selectedTime) {
+      const currentTime = dayjs(appointment.date)
+        .tz(BRAZIL_TIMEZONE)
+        .format("HH:mm:ss");
+      console.log("🎯 Setting time from available times:", currentTime);
+      setSelectedTime(currentTime);
+    }
+  }, [appointment, availableTimes, selectedTime]);
 
   const handleDoctorChange = (doctorId: string) => {
     setSelectedDoctorId(doctorId);
@@ -130,9 +178,19 @@ export function EditAppointmentModal({
 
     setIsLoading(true);
     try {
-      const isoDateTime = new Date(
-        `${format(selectedDate, "yyyy-MM-dd")}T${selectedTime}`,
-      );
+      // Criar data/hora em horário local brasileiro e converter para UTC
+      const [hours, minutes] = selectedTime.split(":").map(Number);
+
+      // Criar data local brasileira
+      const localDateTime = dayjs(selectedDate)
+        .tz(BRAZIL_TIMEZONE)
+        .hour(hours)
+        .minute(minutes)
+        .second(0)
+        .millisecond(0);
+
+      // Converter para UTC para salvar no banco
+      const isoDateTime = localDateTime.utc().toDate();
 
       const result = await editAppointment({
         appointmentId: appointment.id,
@@ -258,13 +316,92 @@ export function EditAppointmentModal({
                   <SelectValue placeholder="Selecionar horário" />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableTimes
-                    .filter((t) => t.available)
-                    .map((t) => (
-                      <SelectItem key={t.value} value={t.value}>
-                        {t.label}
-                      </SelectItem>
-                    ))}
+                  {availableTimes.length === 0 ? (
+                    <SelectItem value="no-times" disabled>
+                      Nenhum horário disponível
+                    </SelectItem>
+                  ) : (
+                    (() => {
+                      const { morning, afternoon, evening } =
+                        groupTimesByPeriod(availableTimes);
+
+                      return (
+                        <>
+                          {morning.length > 0 && (
+                            <SelectGroup>
+                              <SelectLabel>Manhã</SelectLabel>
+                              {morning.map((time) => (
+                                <SelectItem
+                                  key={time.value}
+                                  value={time.value}
+                                  disabled={
+                                    !time.available &&
+                                    time.value !== selectedTime
+                                  }
+                                >
+                                  {time.label}{" "}
+                                  {!time.available &&
+                                    time.value !== selectedTime &&
+                                    "(Indisponível)"}
+                                  {time.value === selectedTime &&
+                                    !time.available &&
+                                    " (atual)"}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          )}
+
+                          {afternoon.length > 0 && (
+                            <SelectGroup>
+                              <SelectLabel>Tarde</SelectLabel>
+                              {afternoon.map((time) => (
+                                <SelectItem
+                                  key={time.value}
+                                  value={time.value}
+                                  disabled={
+                                    !time.available &&
+                                    time.value !== selectedTime
+                                  }
+                                >
+                                  {time.label}{" "}
+                                  {!time.available &&
+                                    time.value !== selectedTime &&
+                                    "(Indisponível)"}
+                                  {time.value === selectedTime &&
+                                    !time.available &&
+                                    " (atual)"}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          )}
+
+                          {evening.length > 0 && (
+                            <SelectGroup>
+                              <SelectLabel>Noite</SelectLabel>
+                              {evening.map((time) => (
+                                <SelectItem
+                                  key={time.value}
+                                  value={time.value}
+                                  disabled={
+                                    !time.available &&
+                                    time.value !== selectedTime
+                                  }
+                                >
+                                  {time.label}{" "}
+                                  {!time.available &&
+                                    time.value !== selectedTime &&
+                                    "(Indisponível)"}
+                                  {time.value === selectedTime &&
+                                    !time.available &&
+                                    " (atual)"}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          )}
+                        </>
+                      );
+                    })()
+                  )}
                 </SelectContent>
               </Select>
             </div>

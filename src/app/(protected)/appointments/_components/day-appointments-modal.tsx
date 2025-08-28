@@ -2,6 +2,9 @@
 
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import { Calendar, Check, Edit, X } from "lucide-react";
 
 import {
@@ -10,8 +13,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { convertToLocalDate } from "@/helpers/date";
 import type { AppointmentWithRelations } from "@/types/appointments";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+// Configurar timezone padrão para Brasil
+const BRAZIL_TIMEZONE = "America/Sao_Paulo";
 
 interface DayAppointmentsModalProps {
   date: Date;
@@ -35,12 +43,14 @@ export function DayAppointmentsModal({
   isDoctor = false,
 }: DayAppointmentsModalProps) {
   const sortedAppointments = appointments.sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    (a, b) =>
+      dayjs(a.date).tz(BRAZIL_TIMEZONE).toDate().getTime() -
+      dayjs(b.date).tz(BRAZIL_TIMEZONE).toDate().getTime(),
   );
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] w-full max-w-[95vw] overflow-hidden border-0 p-0 shadow-2xl sm:max-h-[85vh] sm:max-w-2xl md:max-w-4xl lg:max-w-6xl">
+      <DialogContent className="lg:max-w-9xl md:max-w-8xl max-h-[98vh] w-full max-w-[99vw] overflow-hidden border-0 p-0 shadow-2xl sm:max-h-[95vh] sm:max-w-7xl xl:max-w-[95vw] 2xl:max-w-[90vw]">
         <div className="bg-background overflow-hidden rounded-xl">
           {/* Header com gradiente */}
           <div className="from-primary/10 to-primary/20 dark:from-primary/20 dark:to-primary/30 border-border/50 border-b bg-gradient-to-r p-4 sm:p-6">
@@ -74,24 +84,27 @@ export function DayAppointmentsModal({
           </div>
 
           {/* Conteúdo principal */}
-          <div className="p-4 sm:p-6">
-            <div className="max-h-[60vh] overflow-y-auto pr-1 sm:max-h-[65vh] sm:pr-2">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="p-6 sm:p-8 lg:p-10">
+            <div className="overflow-container max-h-[70vh] overflow-y-auto pr-1 sm:max-h-[75vh] sm:pr-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
                 {sortedAppointments.map((appointment) => (
                   <div
                     key={appointment.id}
-                    className="from-background to-muted/20 border-border/40 hover:border-primary/30 hover:from-primary/5 hover:to-primary/10 group rounded-xl border bg-gradient-to-br p-4 shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-lg sm:p-5"
+                    className="from-background to-muted/20 border-border/40 hover:border-primary/30 hover:from-primary/5 hover:to-primary/10 group flex h-full min-h-[140px] flex-col rounded-xl border-2 bg-gradient-to-br p-3 shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-lg sm:p-4 lg:p-5"
                   >
-                    <div className="space-y-4">
+                    <div className="flex-1 space-y-3">
+                      {/* Header com horário e status */}
                       <div className="flex items-start justify-between">
-                        <div className="text-primary bg-primary/10 border-primary/20 rounded-full border px-3 py-1.5 text-lg font-bold shadow-sm">
+                        <div className="text-primary bg-primary/10 border-primary/20 rounded-full border px-2 py-1 text-sm font-bold shadow-sm sm:px-3 sm:py-1.5 sm:text-base">
                           {format(
-                            convertToLocalDate(appointment.date),
+                            dayjs(appointment.date)
+                              .tz(BRAZIL_TIMEZONE)
+                              .toDate(),
                             "HH:mm",
                           )}
                         </div>
                         <div
-                          className={`rounded-full border px-3 py-1.5 text-xs font-semibold shadow-sm ${
+                          className={`rounded-full border px-1.5 py-1 text-xs font-semibold shadow-sm sm:px-2 sm:py-1.5 ${
                             appointment.status === "confirmed"
                               ? "border-emerald-200 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 dark:border-emerald-700 dark:from-emerald-900/40 dark:to-emerald-800/40 dark:text-emerald-300"
                               : appointment.status === "pending"
@@ -99,160 +112,100 @@ export function DayAppointmentsModal({
                                 : "border-rose-200 bg-gradient-to-r from-rose-50 to-rose-100 text-rose-700 dark:border-rose-700 dark:from-rose-900/40 dark:to-rose-800/40 dark:text-rose-300"
                           }`}
                         >
-                          {appointment.status === "confirmed"
-                            ? "Confirmado"
-                            : appointment.status === "pending"
-                              ? "Pendente"
-                              : "Cancelado"}
-                        </div>
-                      </div>
-
-                      <div className="space-y-3">
-                        <div className="bg-muted/30 border-border/30 rounded-lg border p-3">
-                          <p className="text-foreground mb-1 truncate text-sm font-semibold">
-                            {appointment.patient.name}
-                          </p>
-                          <div className="space-y-1">
-                            <p className="text-muted-foreground truncate text-xs">
-                              📧 {appointment.patient.email}
-                            </p>
-                            <p className="text-muted-foreground text-xs">
-                              📱 {appointment.patient.phoneNumber}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="bg-primary/5 border-primary/20 rounded-lg border p-3">
-                          <p className="text-foreground mb-1 truncate text-sm font-medium">
-                            Dr. {appointment.doctor.name}
-                          </p>
-                          <p className="text-muted-foreground truncate text-xs">
-                            {appointment.doctor.specialty}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="border-border/30 flex flex-col gap-3 border-t pt-4">
-                        <div className="text-center">
-                          <div className="text-primary from-primary/10 to-primary/5 border-primary/20 rounded-lg border bg-gradient-to-r px-4 py-2 text-xl font-bold">
-                            R${" "}
-                            {(appointment.appointmentPriceInCents / 100)
-                              .toFixed(2)
-                              .replace(".", ",")}
-                          </div>
-                        </div>
-
-                        <div className="flex gap-2">
-                          {!isDoctor && (
-                            <>
-                              {appointment.status === "pending" &&
-                                onConfirmAppointment && (
-                                  <button
-                                    onClick={() =>
-                                      onConfirmAppointment(appointment)
-                                    }
-                                    className="flex flex-1 items-center justify-center rounded-lg bg-green-600 p-2.5 font-medium text-white shadow-sm transition-all duration-200 hover:scale-105 hover:bg-green-700 hover:shadow-md"
-                                    title="Confirmar agendamento"
-                                  >
-                                    <Check className="h-4 w-4" />
-                                  </button>
-                                )}
-
-                              {appointment.status !== "canceled" &&
-                                onEditAppointment && (
-                                  <button
-                                    onClick={() =>
-                                      onEditAppointment(appointment)
-                                    }
-                                    className="hover:bg-muted/20 text-foreground border-border/40 hover:border-border/60 flex flex-1 items-center justify-center rounded-lg border p-2.5 font-medium transition-all duration-200 hover:scale-105"
-                                    title="Editar agendamento"
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </button>
-                                )}
-
-                              {["pending", "confirmed"].includes(
-                                appointment.status,
-                              ) &&
-                                onCancelAppointment && (
-                                  <button
-                                    onClick={() =>
-                                      onCancelAppointment(appointment)
-                                    }
-                                    className="flex flex-1 items-center justify-center rounded-lg border border-red-200 p-2.5 font-medium text-red-600 shadow-sm transition-all duration-200 hover:scale-105 hover:border-red-300 hover:bg-red-50 hover:shadow-md dark:border-red-800 dark:text-red-400 dark:hover:border-red-700 dark:hover:bg-red-950/20"
-                                    title="Cancelar agendamento"
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </button>
-                                )}
-                            </>
+                          {appointment.status === "confirmed" ? (
+                            <Check className="h-2 w-2 sm:h-3 sm:w-3" />
+                          ) : appointment.status === "pending" ? (
+                            <div className="h-2 w-2 rounded-full bg-amber-500 sm:h-3 sm:w-3" />
+                          ) : (
+                            <X className="h-2 w-2 sm:h-3 sm:w-3" />
                           )}
                         </div>
                       </div>
+
+                      {/* Conteúdo principal */}
+                      <div className="flex-1 space-y-2">
+                        <div className="bg-muted/30 rounded-lg p-2 sm:p-2.5">
+                          <h4 className="text-foreground mb-1 truncate text-sm font-semibold sm:text-base">
+                            {appointment.patient.name}
+                          </h4>
+                          <p className="text-muted-foreground truncate text-xs sm:text-sm">
+                            {appointment.patient.email}
+                          </p>
+                        </div>
+
+                        <div className="bg-muted/30 rounded-lg p-2 sm:p-2.5">
+                          <p className="text-foreground mb-1 text-sm font-medium sm:text-base">
+                            Dr. {appointment.doctor.name}
+                          </p>
+                          <p className="text-muted-foreground text-xs sm:text-sm">
+                            {appointment.doctor.specialty}
+                          </p>
+                        </div>
+
+                        <div className="bg-primary/10 border-primary/20 rounded-lg border p-2 sm:p-2.5">
+                          <p className="text-primary text-sm font-bold sm:text-base">
+                            {new Intl.NumberFormat("pt-BR", {
+                              style: "currency",
+                              currency: "BRL",
+                            }).format(
+                              appointment.appointmentPriceInCents / 100,
+                            )}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Ações */}
+                      {!isDoctor && (
+                        <div className="mt-auto flex items-center justify-center gap-2 pt-4">
+                          {appointment.status === "pending" &&
+                            onConfirmAppointment && (
+                              <button
+                                onClick={() => {
+                                  onConfirmAppointment(appointment);
+                                  onOpenChange(false);
+                                }}
+                                className="flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2 text-white shadow-sm transition-all hover:bg-emerald-700 hover:shadow-md focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:outline-none sm:px-5 sm:py-2.5"
+                                title="Confirmar agendamento"
+                                aria-label="Confirmar agendamento"
+                              >
+                                <Check className="h-4 w-4 sm:h-5 sm:w-5" />
+                              </button>
+                            )}
+
+                          {appointment.status !== "canceled" &&
+                            onEditAppointment && (
+                              <button
+                                onClick={() => {
+                                  onEditAppointment(appointment);
+                                  onOpenChange(false);
+                                }}
+                                className="flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-white shadow-sm transition-all hover:bg-blue-700 hover:shadow-md focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none sm:px-5 sm:py-2.5"
+                                title="Editar agendamento"
+                                aria-label="Editar agendamento"
+                              >
+                                <Edit className="h-4 w-4 sm:h-5 sm:w-5" />
+                              </button>
+                            )}
+
+                          {appointment.status !== "canceled" &&
+                            onCancelAppointment && (
+                              <button
+                                onClick={() => {
+                                  onCancelAppointment(appointment);
+                                  onOpenChange(false);
+                                }}
+                                className="flex items-center justify-center rounded-lg bg-rose-600 px-4 py-2 text-white shadow-sm transition-all hover:bg-rose-700 hover:shadow-md focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 focus:outline-none sm:px-5 sm:py-2.5"
+                                title="Cancelar agendamento"
+                                aria-label="Cancelar agendamento"
+                              >
+                                <X className="h-4 w-4 sm:h-5 sm:w-5" />
+                              </button>
+                            )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Footer com estatísticas */}
-          <div className="from-muted/20 to-muted/10 border-border/30 border-t bg-gradient-to-r p-4 sm:p-6">
-            <div className="flex flex-col gap-4 text-sm sm:flex-row sm:flex-wrap sm:gap-8">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-800 dark:bg-emerald-900/20">
-                  <div className="h-3 w-3 rounded-full bg-emerald-500 shadow-sm"></div>
-                  <span className="font-medium text-emerald-700 dark:text-emerald-300">
-                    Confirmados:{" "}
-                    <span className="font-bold">
-                      {
-                        sortedAppointments.filter(
-                          (a) => a.status === "confirmed",
-                        ).length
-                      }
-                    </span>
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-900/20">
-                  <div className="h-3 w-3 rounded-full bg-amber-500 shadow-sm"></div>
-                  <span className="font-medium text-amber-700 dark:text-amber-300">
-                    Pendentes:{" "}
-                    <span className="font-bold">
-                      {
-                        sortedAppointments.filter((a) => a.status === "pending")
-                          .length
-                      }
-                    </span>
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 dark:border-rose-800 dark:bg-rose-900/20">
-                  <div className="h-3 w-3 rounded-full bg-rose-500 shadow-sm"></div>
-                  <span className="font-medium text-rose-700 dark:text-rose-300">
-                    Cancelados:{" "}
-                    <span className="font-bold">
-                      {
-                        sortedAppointments.filter(
-                          (a) => a.status === "canceled",
-                        ).length
-                      }
-                    </span>
-                  </span>
-                </div>
-              </div>
-              <div className="ml-auto flex items-center gap-3">
-                <div className="from-primary/10 to-primary/5 border-primary/20 rounded-lg border bg-gradient-to-r px-4 py-2">
-                  <span className="text-primary font-semibold">
-                    Total:{" "}
-                    <span className="font-bold">
-                      {sortedAppointments.length}
-                    </span>{" "}
-                    agendamentos
-                  </span>
-                </div>
               </div>
             </div>
           </div>

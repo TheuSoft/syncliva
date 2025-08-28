@@ -119,3 +119,49 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Melhorias para Popovers e Modais */
+@layer components {
+  /* Garantir que popovers sempre apareçam acima de outros elementos */
+  [data-radix-popper-content-wrapper] {
+    z-index: 9999 !important;
+  }
+
+  /* Melhorar posicionamento de popovers */
+  .popover-content {
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+  }
+
+  /* Garantir que modais tenham z-index adequado */
+  [data-radix-dialog-overlay] {
+    z-index: 9998 !important;
+  }
+
+  [data-radix-dialog-content] {
+    z-index: 9999 !important;
+  }
+
+  /* Melhorar scroll em containers com overflow */
+  .overflow-container {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted)) transparent;
+  }
+
+  .overflow-container::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .overflow-container::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .overflow-container::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted));
+    border-radius: 3px;
+  }
+
+  .overflow-container::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground));
+  }
+}

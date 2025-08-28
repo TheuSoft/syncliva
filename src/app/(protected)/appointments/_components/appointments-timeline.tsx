@@ -1,5 +1,8 @@
 "use client";
 
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import { format, isAfter, isBefore, isToday, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar, Clock, Stethoscope, User } from "lucide-react";
@@ -7,10 +10,15 @@ import { useMemo } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { convertToLocalDate } from "@/helpers/date";
 import type { AppointmentWithRelations } from "@/types/appointments";
 
 import { AppointmentActions } from "./appointment-actions";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+// Configurar timezone padrão para Brasil
+const BRAZIL_TIMEZONE = "America/Sao_Paulo";
 
 interface AppointmentsTimelineProps {
   appointments: AppointmentWithRelations[];
@@ -38,8 +46,8 @@ export function AppointmentsTimeline({
     // Ordenar por data (mais recentes primeiro)
     const sortedAppointments = [...filteredAppointments].sort((a, b) => {
       return (
-        convertToLocalDate(b.date).getTime() -
-        convertToLocalDate(a.date).getTime()
+        dayjs(b.date).tz(BRAZIL_TIMEZONE).toDate().getTime() -
+        dayjs(a.date).tz(BRAZIL_TIMEZONE).toDate().getTime()
       );
     });
 
@@ -48,7 +56,9 @@ export function AppointmentsTimeline({
     const monthGroups = new Map<string, AppointmentWithRelations[]>();
 
     sortedAppointments.forEach((appointment) => {
-      const appointmentDate = convertToLocalDate(appointment.date);
+      const appointmentDate = dayjs(appointment.date)
+        .tz(BRAZIL_TIMEZONE)
+        .toDate();
       let monthYear = format(appointmentDate, "MMMM 'de' yyyy", {
         locale: ptBR,
       });
@@ -83,8 +93,8 @@ export function AppointmentsTimeline({
       if (monthYearB === currentMonthYearCapitalized) return 1;
 
       // Para os demais, usamos a data do primeiro agendamento para ordenação
-      const dateA = convertToLocalDate(a.appointments[0].date);
-      const dateB = convertToLocalDate(b.appointments[0].date);
+      const dateA = dayjs(a.appointments[0].date).tz(BRAZIL_TIMEZONE).toDate();
+      const dateB = dayjs(b.appointments[0].date).tz(BRAZIL_TIMEZONE).toDate();
 
       // Verificar se os meses são futuros ou passados em relação ao mês atual
       const isMonthAFuture = isAfter(dateA, now);
@@ -98,11 +108,11 @@ export function AppointmentsTimeline({
         // Meses futuros em ordem crescente (mais próximos primeiro)
         // Meses passados em ordem decrescente (mais recentes primeiro)
         return isMonthAFuture
-          ? dateA.getTime() - dateB.getTime() // Crescente para futuros
-          : dateB.getTime() - dateA.getTime(); // Decrescente para passados
+          ? dateA.getTime() - dateB.getTime()
+          : dateB.getTime() - dateA.getTime();
       }
 
-      // Se um é futuro e outro é passado, o futuro vem antes
+      // Se um é futuro e outro é passado, o futuro vem primeiro
       return isMonthAFuture ? -1 : 1;
     });
   }, [filteredAppointments]);
@@ -215,7 +225,9 @@ export function AppointmentsTimeline({
             {/* Lista de Agendamentos do Mês */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {monthAppointments.map((appointment) => {
-                const appointmentDate = convertToLocalDate(appointment.date);
+                const appointmentDate = dayjs(appointment.date)
+                  .tz(BRAZIL_TIMEZONE)
+                  .toDate();
                 const dateStatus = getDateStatus(appointmentDate);
                 const price = appointment.appointmentPriceInCents / 100;
 

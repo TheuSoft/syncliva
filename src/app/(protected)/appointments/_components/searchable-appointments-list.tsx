@@ -2,6 +2,10 @@
 
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
+import { CalendarDays, Filter, List, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -16,37 +20,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { convertToLocalDate } from "@/helpers/date";
 import type { AppointmentWithRelations } from "@/types/appointments";
 
-import { AppointmentsTimeline } from "./appointments-timeline";
+import { AppointmentCard } from "./appointment-card";
 import { CalendarView } from "./calendar-view";
 import { EditAppointmentModal } from "./edit-appointment-modal";
-import { ViewToggle } from "./view-toggle";
 
-// Tipos para pacientes e médicos
-type Patient = {
-  id: string;
-  name: string;
-  email: string;
-  phoneNumber: string;
-  sex: "male" | "female";
-};
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
-type Doctor = {
-  id: string;
-  name: string;
-  specialty: string;
-  appointmentPriceInCents: number;
-  availableFromWeekDay: number;
-  availableToWeekDay: number;
-};
+// Configurar timezone padrão para Brasil
+const BRAZIL_TIMEZONE = "America/Sao_Paulo";
 
 interface SearchableAppointmentsListProps {
   initialAppointments: AppointmentWithRelations[];
-  patients: Patient[];
-  doctors: Doctor[];
-  doctorId?: string; // Parâmetro opcional para filtrar agendamentos por médico
+  patients: { id: string; name: string; email: string }[];
+  doctors: {
+    id: string;
+    name: string;
+    specialty: string;
+    availableFromWeekDay: number;
+    availableToWeekDay: number;
+    appointmentPriceInCents: number;
+  }[];
   isDoctor?: boolean; // Indica se estamos no dashboard do médico
 }
 
@@ -54,7 +50,6 @@ const SearchableAppointmentsList = ({
   initialAppointments,
   patients,
   doctors,
-  doctorId,
   isDoctor = false,
 }: SearchableAppointmentsListProps) => {
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -75,7 +70,9 @@ const SearchableAppointmentsList = ({
     >();
 
     initialAppointments.forEach((appointment) => {
-      const appointmentDate = new Date(appointment.date);
+      const appointmentDate = dayjs(appointment.date)
+        .tz(BRAZIL_TIMEZONE)
+        .toDate();
       const monthKey = format(appointmentDate, "yyyy-MM");
       const year = format(appointmentDate, "yyyy");
       // Formatar com primeira letra maiúscula
@@ -105,7 +102,7 @@ const SearchableAppointmentsList = ({
     );
 
     sortedYears.forEach((year) => {
-      groupedByYear[year].sort((a, b) => b.key.localeCompare(a.key));
+      groupedByYear[year].sort((a, b) => a.key.localeCompare(b.key));
     });
 
     return { groupedByYear, sortedYears };
@@ -119,8 +116,10 @@ const SearchableAppointmentsList = ({
     const matchesMonth =
       selectedMonth === "all"
         ? true
-        : format(convertToLocalDate(appointment.date), "yyyy-MM") ===
-          selectedMonth;
+        : format(
+            dayjs(appointment.date).tz(BRAZIL_TIMEZONE).toDate(),
+            "yyyy-MM",
+          ) === selectedMonth;
 
     const matchesDoctor =
       selectedDoctor === "all" ? true : appointment.doctorId === selectedDoctor;
@@ -182,11 +181,11 @@ const SearchableAppointmentsList = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="w-full max-w-full space-y-4 overflow-hidden">
       {/* Filtros - apenas na visualização de lista */}
       {view === "list" && (
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex flex-col gap-2 md:flex-row md:gap-4">
+        <div className="flex w-full max-w-full flex-col gap-4 overflow-hidden md:flex-row md:items-center md:justify-between">
+          <div className="flex w-full max-w-full flex-col gap-2 overflow-hidden md:flex-row md:gap-4">
             <div className="flex flex-col gap-2">
               <p className="text-sm font-medium">Filtrar por mês:</p>
               <Select value={selectedMonth} onValueChange={setSelectedMonth}>
@@ -213,7 +212,6 @@ const SearchableAppointmentsList = ({
               </Select>
             </div>
 
-            {/* Seletor de médicos - somente para admin */}
             {!isDoctor && (
               <div className="flex flex-col gap-2">
                 <p className="text-sm font-medium">Filtrar por médico:</p>
@@ -228,83 +226,73 @@ const SearchableAppointmentsList = ({
                     <SelectItem value="all">Todos os médicos</SelectItem>
                     {doctors.map((doctor) => (
                       <SelectItem key={doctor.id} value={doctor.id}>
-                        <span className="font-medium text-blue-700 dark:text-blue-300">
-                          {doctor.name} - {doctor.specialty}
-                        </span>
+                        {doctor.name} - {doctor.specialty}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             )}
+
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-medium">Buscar paciente:</p>
+              <div className="relative">
+                <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+                <Input
+                  placeholder="Digite o nome do paciente..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearFilters}
+              className="flex items-center gap-2"
+            >
+              <X className="h-4 w-4" />
+              Limpar filtros
+            </Button>
           </div>
         </div>
       )}
 
-      {/* Busca e controles */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        {/* Lado esquerdo - Campo de busca e botão limpar filtros */}
+      {/* Toggle de visualização */}
+      <div className="flex w-full max-w-full items-center justify-between overflow-hidden">
         <div className="flex items-center gap-2">
-          {/* Campo de busca - apenas na visualização de lista */}
-          {view === "list" && (
-            <Input
-              type="text"
-              placeholder="Buscar por nome do paciente..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-sm"
-            />
-          )}
-
-          {/* Botão limpar filtros - apenas na visualização de lista */}
-          {view === "list" &&
-            (searchTerm ||
-              selectedMonth !== "all" ||
-              selectedDoctor !== "all") && (
-              <Button variant="outline" onClick={clearFilters}>
-                Limpar filtros
-              </Button>
-            )}
+          <Button
+            variant={view === "calendar" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setView("calendar")}
+            className="flex items-center gap-2"
+          >
+            <CalendarDays className="h-4 w-4" />
+            Calendário
+          </Button>
+          <Button
+            variant={view === "list" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setView("list")}
+            className="flex items-center gap-2"
+          >
+            <List className="h-4 w-4" />
+            Lista
+          </Button>
         </div>
 
-        {/* Lado direito - ViewToggle sempre aqui */}
-        <div className="flex items-center gap-2">
-          <ViewToggle view={view} onViewChange={setView} />
+        <div className="text-muted-foreground flex items-center gap-2 text-sm">
+          <Filter className="h-4 w-4" />
+          {filteredAppointments.length} de {initialAppointments.length}{" "}
+          agendamentos
         </div>
       </div>
 
-      {/* Informações dos filtros */}
-      <div className="text-muted-foreground text-sm">
-        <p>
-          Mostrando {filteredAppointments.length} de{" "}
-          {initialAppointments.length} agendamentos
-          {searchTerm && ` • Busca: "${searchTerm}"`}
-          {selectedMonth !== "all" &&
-            (() => {
-              // Encontrar o mês selecionado em todos os anos
-              for (const year of availableMonthsByYear.sortedYears) {
-                const month = availableMonthsByYear.groupedByYear[year].find(
-                  (m) => m.key === selectedMonth,
-                );
-                if (month) {
-                  return ` • Mês: ${month.label} de ${month.year}`;
-                }
-              }
-              return ` • Mês: ${selectedMonth}`;
-            })()}
-          {selectedDoctor !== "all" &&
-            (() => {
-              // Encontrar o médico selecionado
-              const doctor = doctors.find((d) => d.id === selectedDoctor);
-              if (doctor) {
-                return ` • Médico: ${doctor.name}`;
-              }
-              return ` • Médico: ID ${selectedDoctor}`;
-            })()}
-        </p>
-      </div>
-
-      {/* Visualização dos agendamentos */}
+      {/* Conteúdo baseado na visualização */}
       {view === "calendar" ? (
         <CalendarView
           appointments={filteredAppointments}
@@ -314,31 +302,81 @@ const SearchableAppointmentsList = ({
           isDoctor={isDoctor}
         />
       ) : (
-        <AppointmentsTimeline
-          appointments={filteredAppointments}
-          onEdit={handleEditAppointment}
-          doctorId={doctorId}
-          isDoctor={isDoctor}
-        />
+        <div className="w-full max-w-full space-y-8 overflow-hidden">
+          {(() => {
+            // Agrupar agendamentos por mês
+            const appointmentsByMonth = filteredAppointments.reduce(
+              (acc, appointment) => {
+                const appointmentDate = dayjs(appointment.date)
+                  .tz(BRAZIL_TIMEZONE)
+                  .toDate();
+                const monthKey = format(appointmentDate, "yyyy-MM");
+                const monthLabel = format(appointmentDate, "MMMM 'de' yyyy", {
+                  locale: ptBR,
+                });
+
+                if (!acc[monthKey]) {
+                  acc[monthKey] = {
+                    label:
+                      monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1),
+                    appointments: [],
+                  };
+                }
+                acc[monthKey].appointments.push(appointment);
+                return acc;
+              },
+              {} as Record<
+                string,
+                { label: string; appointments: AppointmentWithRelations[] }
+              >,
+            );
+
+            // Ordenar meses (mais recente primeiro)
+            const sortedMonths = Object.entries(appointmentsByMonth).sort(
+              ([a], [b]) => b.localeCompare(a),
+            );
+
+            return sortedMonths.map(([monthKey, { label, appointments }]) => (
+              <div
+                key={monthKey}
+                className="w-full max-w-full space-y-4 overflow-hidden"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="bg-border h-px flex-1" />
+                  <h3 className="text-foreground text-lg font-semibold">
+                    {label}
+                  </h3>
+                  <div className="bg-border h-px flex-1" />
+                </div>
+
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  {appointments.map((appointment) => (
+                    <AppointmentCard
+                      key={appointment.id}
+                      appointment={appointment}
+                      onEdit={handleEditAppointment}
+                      onConfirm={handleConfirmAppointment}
+                      onCancel={handleCancelAppointment}
+                      isDoctor={isDoctor}
+                    />
+                  ))}
+                </div>
+              </div>
+            ));
+          })()}
+        </div>
       )}
 
-      {/* Modal de Edição - não mostrar para médicos */}
-      {!isDoctor && (
-        <EditAppointmentModal
-          appointment={appointmentToEdit}
-          patients={patients}
-          doctors={doctors}
-          open={editModalOpen}
-          onOpenChange={(open) => {
-            setEditModalOpen(open);
-            if (!open) {
-              setAppointmentToEdit(null);
-            }
-          }}
-        />
-      )}
+      {/* Modal de edição */}
+      <EditAppointmentModal
+        appointment={appointmentToEdit}
+        patients={patients}
+        doctors={doctors}
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+      />
     </div>
   );
 };
 
-export default SearchableAppointmentsList;
+export { SearchableAppointmentsList };

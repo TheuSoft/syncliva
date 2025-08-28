@@ -2,6 +2,9 @@
 
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import {
   AlertTriangle,
   Calendar,
@@ -25,64 +28,51 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import { convertToLocalDate } from "@/helpers/date";
 import type { AppointmentWithRelations } from "@/types/appointments";
 
-interface DeleteConfirmationDialogProps {
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+// Configurar timezone padrão para Brasil
+const BRAZIL_TIMEZONE = "America/Sao_Paulo";
+
+interface DeleteConfirmationModalProps {
   appointment: AppointmentWithRelations | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSuccess?: () => void;
+  onError?: (message: string) => void;
 }
 
-export function DeleteConfirmationDialog({
+export function DeleteConfirmationModal({
   appointment,
   open,
   onOpenChange,
-}: DeleteConfirmationDialogProps) {
+  onSuccess,
+  onError,
+}: DeleteConfirmationModalProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [confirmChecked, setConfirmChecked] = useState(false);
 
-  const handleDelete = async () => {
-    if (!appointment || !confirmChecked) return;
-
+  const handleConfirmDelete = async () => {
+    if (!appointment) return;
     setIsLoading(true);
 
     try {
       const result = await deleteAppointment({ appointmentId: appointment.id });
-
       if (result.success) {
-        toast.success("Agendamento excluído permanentemente!", {
-          description: `O agendamento de ${appointment.patient.name} foi removido do sistema.`,
-          action: {
-            label: "Fechar",
-            onClick: () => {},
-          },
-        });
+        toast.success("Agendamento excluído permanentemente!");
+        onSuccess?.();
         onOpenChange(false);
       } else {
-        toast.error("Erro ao excluir agendamento", {
-          description: result.message,
-        });
+        onError?.(result.message);
       }
-    } catch (error) {
-      // ✅ CORRIGIDO: Usar a variável error
-      const errorMessage =
-        error instanceof Error ? error.message : "Erro desconhecido";
-      toast.error("Erro inesperado", {
-        description: `Ocorreu um erro ao tentar excluir o agendamento: ${errorMessage}`,
-      });
-      console.error("Erro ao excluir agendamento:", error);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erro desconhecido";
+      onError?.(`Erro ao excluir: ${msg}`);
     } finally {
       setIsLoading(false);
-      setConfirmChecked(false);
     }
-  };
-
-  const handleCancel = () => {
-    setConfirmChecked(false);
-    onOpenChange(false);
   };
 
   if (!appointment) return null;
@@ -93,14 +83,15 @@ export function DeleteConfirmationDialog({
         <AlertDialogHeader className="space-y-4">
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-              <AlertTriangle className="h-6 w-6 text-red-600" />
+              <Trash2 className="h-6 w-6 text-red-600" />
             </div>
             <div>
               <AlertDialogTitle className="text-lg font-semibold text-red-600">
                 Excluir Agendamento
               </AlertDialogTitle>
               <p className="text-muted-foreground text-sm">
-                Esta ação não pode ser desfeita
+                Esta ação é irreversível e removerá o agendamento
+                permanentemente.
               </p>
             </div>
           </div>
@@ -108,124 +99,92 @@ export function DeleteConfirmationDialog({
 
         <AlertDialogDescription asChild>
           <div className="space-y-4">
-            {/* Aviso de Perigo */}
             <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-              <div className="flex items-start gap-3">
-                <Trash2 className="mt-0.5 h-4 w-4 text-red-600" />
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-red-800">
-                    Ação Irreversível
-                  </p>
-                  <p className="text-xs text-red-700">
-                    O agendamento será removido permanentemente do sistema e
-                    todos os dados relacionados serão perdidos.
-                  </p>
-                </div>
-              </div>
+              <p className="text-sm text-red-800">
+                <strong>Atenção:</strong> Esta ação não pode ser desfeita. O
+                agendamento será removido permanentemente do sistema.
+              </p>
             </div>
 
-            {/* Detalhes do Agendamento */}
             <div className="space-y-3">
-              <h4 className="text-sm font-medium">Detalhes do Agendamento:</h4>
+              <h4 className="text-sm font-medium">Detalhes do agendamento:</h4>
 
-              <div className="bg-muted/30 space-y-3 rounded-lg border p-3">
-                <div className="flex items-center gap-2 text-sm">
-                  <User className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-                  <span className="font-medium">Paciente:</span>
-                  <span className="font-medium text-blue-700 dark:text-blue-300">
-                    {appointment.patient.name}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2 text-sm">
-                  <Stethoscope className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-                  <span className="font-medium">Médico:</span>
-                  <span className="font-medium text-blue-700 dark:text-blue-300">
-                    {appointment.doctor.name}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2 text-sm">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
                   <Calendar className="text-muted-foreground h-4 w-4" />
-                  <span className="font-medium">Data:</span>
-                  <span>
+                  <span className="text-sm">
                     {format(
-                      convertToLocalDate(appointment.date),
+                      dayjs(appointment.date).tz(BRAZIL_TIMEZONE).toDate(),
                       "dd/MM/yyyy",
                       { locale: ptBR },
                     )}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2 text-sm">
+                <div className="flex items-center gap-2">
                   <Clock className="text-muted-foreground h-4 w-4" />
-                  <span className="font-medium">Horário:</span>
-                  <span>
-                    {format(convertToLocalDate(appointment.date), "HH:mm", {
-                      locale: ptBR,
-                    })}
+                  <span className="text-sm">
+                    {format(
+                      dayjs(appointment.date).tz(BRAZIL_TIMEZONE).toDate(),
+                      "HH:mm",
+                      { locale: ptBR },
+                    )}
                   </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <User className="text-muted-foreground h-4 w-4" />
+                  <span className="text-sm">{appointment.patient.name}</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Stethoscope className="text-muted-foreground h-4 w-4" />
+                  <span className="text-sm">Dr. {appointment.doctor.name}</span>
+                </div>
+
+                <Separator />
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Valor:</span>
+                  <Badge variant="secondary">
+                    {new Intl.NumberFormat("pt-BR", {
+                      style: "currency",
+                      currency: "BRL",
+                    }).format(appointment.appointmentPriceInCents / 100)}
+                  </Badge>
                 </div>
 
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Status:</span>
                   <Badge
-                    variant="secondary"
-                    className="bg-red-100 text-red-800"
+                    variant={
+                      appointment.status === "confirmed"
+                        ? "default"
+                        : appointment.status === "pending"
+                          ? "secondary"
+                          : "destructive"
+                    }
                   >
-                    Cancelado
+                    {appointment.status === "confirmed"
+                      ? "Confirmado"
+                      : appointment.status === "pending"
+                        ? "Pendente"
+                        : "Cancelado"}
                   </Badge>
                 </div>
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Checkbox de Confirmação */}
-            <div className="flex items-start space-x-3">
-              <Checkbox
-                id="confirm-delete"
-                checked={confirmChecked}
-                onCheckedChange={(checked) =>
-                  setConfirmChecked(checked === true)
-                }
-                className="mt-1"
-              />
-              <div className="space-y-1">
-                <label
-                  htmlFor="confirm-delete"
-                  className="cursor-pointer text-sm leading-none font-medium"
-                >
-                  Confirmar exclusão
-                </label>
-                <p className="text-muted-foreground text-xs">
-                  Entendo que esta ação é permanente e não pode ser desfeita
-                </p>
               </div>
             </div>
           </div>
         </AlertDialogDescription>
 
-        <AlertDialogFooter className="gap-2">
-          <AlertDialogCancel onClick={handleCancel} disabled={isLoading}>
-            Cancelar
-          </AlertDialogCancel>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isLoading}>Cancelar</AlertDialogCancel>
           <AlertDialogAction
-            onClick={handleDelete}
-            disabled={!confirmChecked || isLoading}
+            onClick={handleConfirmDelete}
+            disabled={isLoading}
             className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
           >
-            {isLoading ? (
-              <div className="flex items-center gap-2">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                Excluindo...
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Trash2 className="h-4 w-4" />
-                Excluir Permanentemente
-              </div>
-            )}
+            {isLoading ? "Excluindo..." : "Confirmar Exclusão"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

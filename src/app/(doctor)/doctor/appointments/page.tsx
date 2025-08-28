@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 
 import { getDoctorAppointments } from "@/actions/get-doctor-appointments";
-import SearchableAppointmentsList from "@/app/(protected)/appointments/_components/searchable-appointments-list";
+import { SearchableAppointmentsList } from "@/app/(protected)/appointments/_components/searchable-appointments-list";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   PageContainer,
@@ -164,7 +164,6 @@ export default async function DoctorAppointments() {
           initialAppointments={appointmentsFormatted}
           patients={patients}
           doctors={doctors}
-          doctorId={doctorId}
           isDoctor={true}
         />
 

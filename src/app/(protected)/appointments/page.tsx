@@ -17,7 +17,7 @@ import { auth } from "@/lib/auth";
 import type { AppointmentWithRelations } from "@/types/appointments";
 
 import AddAppointmentButton from "./_components/add-appointment-button";
-import SearchableAppointmentsList from "./_components/searchable-appointments-list";
+import { SearchableAppointmentsList } from "./_components/searchable-appointments-list";
 
 const AppointmentsPage = async () => {
   const session = await auth.api.getSession({

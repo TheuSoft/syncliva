@@ -9,17 +9,24 @@ import {
   startOfMonth,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import { Calendar, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { convertToLocalDate } from "@/helpers/date";
 import { cn } from "@/lib/utils";
 import type { AppointmentWithRelations } from "@/types/appointments";
 
-import { AppointmentCard } from "./appointment-card";
 import { DayAppointmentsModal } from "./day-appointments-modal";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+// Configurar timezone padrão para Brasil
+const BRAZIL_TIMEZONE = "America/Sao_Paulo";
 
 interface CalendarViewProps {
   appointments: AppointmentWithRelations[];
@@ -68,7 +75,7 @@ export function CalendarView({
 
     appointments.forEach((appointment) => {
       const dateKey = format(
-        convertToLocalDate(appointment.date),
+        dayjs(appointment.date).tz(BRAZIL_TIMEZONE).toDate(),
         "yyyy-MM-dd",
       );
       if (!grouped[dateKey]) {
@@ -98,234 +105,153 @@ export function CalendarView({
 
   return (
     <>
-      <Card className="from-background via-background to-muted/20 border-0 bg-gradient-to-br shadow-lg">
-        <CardHeader className="border-border/20 from-muted/5 to-muted/10 border-b bg-gradient-to-r">
+      <Card className="w-full max-w-full overflow-hidden">
+        <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-foreground flex items-center gap-3 text-xl font-semibold">
-              <div className="bg-primary/10 dark:bg-primary/20 border-primary/20 rounded-lg border p-2.5">
-                <Calendar className="text-primary h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-xl font-bold">
-                  {format(currentDate, "MMMM yyyy", { locale: ptBR }).replace(
-                    /^\w/,
-                    (c) => c.toUpperCase(),
-                  )}
-                </div>
-                <div className="text-muted-foreground mt-0.5 text-sm font-normal">
-                  Agenda de Consultas
-                </div>
-              </div>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Calendário de Agendamentos
             </CardTitle>
-
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={goToToday}
-                className="bg-muted/50 hover:bg-muted border-border/40 h-auto cursor-pointer border px-3 py-1.5 text-xs font-medium"
+                className="text-xs"
               >
                 Hoje
               </Button>
-
-              <div className="border-border/40 bg-muted/30 flex items-center rounded-lg border">
+              {onAddAppointment && (
                 <Button
-                  variant="ghost"
                   size="sm"
-                  onClick={() => navigateMonth("prev")}
-                  className="hover:bg-background h-8 w-8 cursor-pointer rounded-l-lg rounded-r-none border-0 p-0"
+                  onClick={() => onAddAppointment()}
+                  className="flex items-center gap-2"
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <Plus className="h-4 w-4" />
+                  Novo Agendamento
                 </Button>
-
-                <div className="bg-border/40 h-6 w-px"></div>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigateMonth("next")}
-                  className="hover:bg-background h-8 w-8 cursor-pointer rounded-l-none rounded-r-lg border-0 p-0"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+              )}
             </div>
+          </div>
+
+          {/* Navegação do mês */}
+          <div className="flex items-center justify-between">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigateMonth("prev")}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <h2 className="text-lg font-semibold">
+              {format(currentDate, "MMMM 'de' yyyy", { locale: ptBR })}
+            </h2>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigateMonth("next")}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
         </CardHeader>
 
-        <CardContent className="p-0">
+        <CardContent className="w-full max-w-full overflow-hidden">
           {/* Cabeçalho dos dias da semana */}
-          <div className="bg-muted/20 border-border/20 mb-0 grid grid-cols-7 gap-px border-b">
-            {[
-              "Segunda",
-              "Terça",
-              "Quarta",
-              "Quinta",
-              "Sexta",
-              "Sábado",
-              "Domingo",
-            ].map((day, index) => (
+          <div className="mb-2 grid w-full max-w-full grid-cols-7 gap-1">
+            {["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"].map((day) => (
               <div
                 key={day}
-                className="text-muted-foreground bg-background p-3 text-center text-sm font-semibold"
+                className="text-muted-foreground p-2 text-center text-sm font-medium"
               >
-                <span className="hidden sm:inline">{day}</span>
-                <span className="sm:hidden">
-                  {["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"][index]}
-                </span>
+                {day}
               </div>
             ))}
           </div>
 
           {/* Grid do calendário */}
-          <div className="bg-border/10 grid grid-cols-7 gap-0">
-            {calendarDays.map((day, index) => {
+          <div className="grid min-h-0 grid-cols-7 gap-1">
+            {calendarDays.map((day) => {
               const dateKey = format(day, "yyyy-MM-dd");
               const dayAppointments = appointmentsByDate[dateKey] || [];
               const isCurrentMonth = isSameMonth(day, currentDate);
-              const isCurrentDay = isToday(day);
+              const isTodayDate = isToday(day);
 
               return (
                 <div
-                  key={index}
+                  key={day.toISOString()}
                   className={cn(
-                    "bg-background border-border/10 hover:bg-muted/30 relative min-h-[100px] border-r border-b p-2 transition-colors sm:min-h-[120px] sm:p-3 md:min-h-[140px]",
-                    !isCurrentMonth && "text-muted-foreground bg-muted/10",
-                    isCurrentDay && "bg-primary/5 border-primary/20",
+                    "h-full min-h-[100px] w-full max-w-full cursor-pointer overflow-hidden rounded-lg border p-2 transition-colors",
+                    isCurrentMonth
+                      ? "bg-background hover:bg-muted/50"
+                      : "bg-muted/30 text-muted-foreground",
+                    isTodayDate && "ring-primary ring-2",
+                    dayAppointments.length > 0 &&
+                      "bg-blue-50 dark:bg-blue-950/20",
                   )}
+                  onClick={() => {
+                    if (dayAppointments.length > 0) {
+                      setSelectedDay({
+                        date: day,
+                        appointments: dayAppointments,
+                      });
+                    }
+                  }}
                 >
-                  {/* Número do dia */}
-                  <div className="mb-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "flex items-center justify-center text-sm font-semibold",
-                          isCurrentDay
-                            ? "bg-primary text-primary-foreground h-7 w-7 rounded-full text-xs shadow-md"
-                            : isCurrentMonth
-                              ? "text-foreground"
-                              : "text-muted-foreground",
-                        )}
-                      >
-                        {format(day, "d")}
-                      </span>
-                      {/* Indicador de agendamentos */}
-                      {dayAppointments.length > 0 && (
-                        <div className="flex items-center gap-1">
-                          <div
-                            className={cn(
-                              "h-2 w-2 rounded-full shadow-sm",
-                              dayAppointments.some(
-                                (a) => a.status === "confirmed",
-                              )
-                                ? "bg-emerald-500"
-                                : dayAppointments.some(
-                                      (a) => a.status === "pending",
-                                    )
-                                  ? "bg-amber-500"
-                                  : "bg-slate-400",
-                            )}
-                          />
-                          <span className="text-muted-foreground text-xs font-medium">
-                            {dayAppointments.length}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Botão para adicionar agendamento */}
-                    {isCurrentMonth && onAddAppointment && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="hover:bg-primary/10 hover:border-primary/20 h-6 w-6 border border-transparent p-0 opacity-0 transition-all duration-200 group-hover:opacity-100"
-                        onClick={() => onAddAppointment(day)}
-                      >
-                        <Plus className="text-primary h-3 w-3" />
-                      </Button>
-                    )}
+                  <div className="mb-1 text-sm font-medium">
+                    {format(day, "d")}
                   </div>
 
                   {/* Agendamentos do dia */}
-                  <div className="space-y-0.5 overflow-hidden sm:space-y-1">
-                    {dayAppointments.slice(0, 3).map((appointment) => (
-                      <AppointmentCard
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    {dayAppointments.slice(0, 2).map((appointment) => (
+                      <div
                         key={appointment.id}
-                        appointment={appointment}
-                        onEdit={onEditAppointment}
-                        onConfirm={onConfirmAppointment}
-                        onCancel={onCancelAppointment}
-                        isDoctor={isDoctor}
-                        className="from-background to-muted/20 border-border/40 hover:from-primary/5 hover:to-primary/10 hover:border-primary/30 rounded-md border bg-gradient-to-r px-2 py-1.5 text-xs shadow-sm transition-all duration-200 hover:shadow-md"
-                      />
-                    ))}
-
-                    {/* Indicador de mais agendamentos */}
-                    {dayAppointments.length > 3 && (
-                      <button
-                        className="text-primary from-primary/10 to-primary/5 hover:from-primary/15 hover:to-primary/10 border-primary/30 hover:border-primary/50 hover:text-primary/90 w-full transform cursor-pointer rounded-md border border-dashed bg-gradient-to-r px-2 py-1.5 text-xs font-medium shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-md"
-                        onClick={() =>
-                          setSelectedDay({
-                            date: day,
-                            appointments: dayAppointments,
-                          })
-                        }
+                        className={cn(
+                          "w-full max-w-full truncate overflow-hidden rounded-lg border p-1.5 text-xs shadow-sm",
+                          appointment.status === "confirmed"
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                            : appointment.status === "pending"
+                              ? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                              : "border-red-200 bg-red-50 text-red-800 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300",
+                        )}
                       >
-                        +{dayAppointments.length - 3} mais agendamentos
-                      </button>
+                        <div className="flex items-center gap-1">
+                          <span className="font-semibold">
+                            {dayjs(appointment.date)
+                              .tz(BRAZIL_TIMEZONE)
+                              .format("HH:mm")}
+                          </span>
+                          <span className="text-muted-foreground">-</span>
+                          <span className="truncate">
+                            {appointment.patient.name}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                    {dayAppointments.length > 2 && (
+                      <div className="text-muted-foreground bg-muted/50 rounded px-2 py-1 text-center text-xs">
+                        +{dayAppointments.length - 2} mais
+                      </div>
                     )}
                   </div>
                 </div>
               );
             })}
           </div>
-
-          {/* Legenda de status */}
-          <div className="border-border/30 from-muted/20 mt-6 flex flex-wrap items-center gap-3 rounded-lg border-t bg-gradient-to-r to-transparent px-4 py-3 pt-4">
-            <span className="text-foreground text-sm font-semibold">
-              Status dos Agendamentos:
-            </span>
-            <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full bg-emerald-500 shadow-sm"></div>
-              <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
-                Confirmado
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full bg-amber-500 shadow-sm"></div>
-              <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                Pendente
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full bg-slate-400 shadow-sm"></div>
-              <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                Cancelado
-              </span>
-            </div>
-          </div>
         </CardContent>
       </Card>
 
-      {/* Modal para exibir todos os agendamentos do dia */}
+      {/* Modal para mostrar agendamentos do dia */}
       <DayAppointmentsModal
-        isOpen={!!selectedDay}
-        onOpenChange={(open) => !open && setSelectedDay(null)}
         date={selectedDay?.date || new Date()}
         appointments={selectedDay?.appointments || []}
+        isOpen={!!selectedDay}
+        onOpenChange={(open) => !open && setSelectedDay(null)}
+        onEditAppointment={onEditAppointment}
+        onConfirmAppointment={onConfirmAppointment}
+        onCancelAppointment={onCancelAppointment}
         isDoctor={isDoctor}
-        onConfirmAppointment={(appointment) => {
-          onConfirmAppointment?.(appointment);
-          setSelectedDay(null);
-        }}
-        onCancelAppointment={(appointment) => {
-          onCancelAppointment?.(appointment);
-          setSelectedDay(null);
-        }}
-        onEditAppointment={(appointment) => {
-          onEditAppointment?.(appointment);
-          setSelectedDay(null);
-        }}
       />
     </>
   );

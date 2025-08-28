@@ -3,6 +3,9 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -17,14 +20,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { convertToLocalDate } from "@/helpers/date";
 import type { AppointmentWithRelations } from "@/types/appointments";
 
 import { CancelConfirmationDialog } from "./cancel-confirmation-dialog";
-import { DeleteConfirmationDialog } from "./delete-confirmation-modal";
+import { DeleteConfirmationModal } from "./delete-confirmation-modal";
 import { ErrorDialog } from "./error-dialog";
-// ✅ REMOVIDO: sucesso visual com AlertDialog
-// import { SuccessDialog } from "./success-dialog";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+// Configurar timezone padrão para Brasil
+const BRAZIL_TIMEZONE = "America/Sao_Paulo";
 
 interface ActionsCellProps {
   appointment: AppointmentWithRelations;
@@ -99,58 +105,34 @@ const ActionsCell = ({ appointment, onEdit }: ActionsCellProps) => {
             appointment.status !== "confirmed" && (
               <DropdownMenuItem onClick={handleEdit} disabled={isPending}>
                 <Pencil className="mr-2 h-4 w-4" />
-                Editar agendamento
+                Editar
               </DropdownMenuItem>
             )}
 
           {appointment.status === "pending" && (
-            <>
-              <DropdownMenuItem
-                onClick={handleConfirm}
-                disabled={isPending}
-                className="text-green-600"
-              >
-                ✓ Marcar como pago
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={handleCancel}
-                disabled={isPending}
-                className="text-orange-600"
-              >
-                ✗ Cancelar agendamento
-              </DropdownMenuItem>
-            </>
-          )}
-
-          {appointment.status === "confirmed" && (
-            <DropdownMenuItem
-              onClick={handleCancel}
-              disabled={isPending}
-              className="text-orange-600"
-            >
-              ✗ Cancelar agendamento
+            <DropdownMenuItem onClick={handleConfirm} disabled={isPending}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Confirmar Pagamento
             </DropdownMenuItem>
           )}
 
-          {appointment.status === "canceled" && (
-            <>
-              <DropdownMenuItem disabled className="text-gray-400">
-                Agendamento cancelado
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={handleDelete}
-                disabled={isPending}
-                className="text-red-600 focus:bg-red-50 focus:text-red-600"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Excluir permanentemente
-              </DropdownMenuItem>
-            </>
+          {appointment.status !== "canceled" && (
+            <DropdownMenuItem onClick={handleCancel} disabled={isPending}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Cancelar
+            </DropdownMenuItem>
           )}
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuItem onClick={handleDelete} disabled={isPending}>
+            <Trash2 className="mr-2 h-4 w-4" />
+            Excluir Permanentemente
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
+      {/* Dialogs */}
       <CancelConfirmationDialog
         appointment={appointment}
         open={cancelDialogOpen}
@@ -159,10 +141,17 @@ const ActionsCell = ({ appointment, onEdit }: ActionsCellProps) => {
         onError={handleCancelError}
       />
 
-      <DeleteConfirmationDialog
+      <DeleteConfirmationModal
         appointment={appointment}
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
+        onSuccess={() => {
+          console.log(`✅ Agendamento ${appointment.id} excluído com sucesso.`);
+        }}
+        onError={(message) => {
+          setErrorMessage(message);
+          setErrorDialogOpen(true);
+        }}
       />
 
       <ErrorDialog
@@ -174,63 +163,47 @@ const ActionsCell = ({ appointment, onEdit }: ActionsCellProps) => {
   );
 };
 
-// Colunas da tabela
-export const createAppointmentsTableColumns = (
-  onEdit: (appointment: AppointmentWithRelations) => void,
-): ColumnDef<AppointmentWithRelations, unknown>[] => [
+export const columns: ColumnDef<AppointmentWithRelations>[] = [
   {
-    id: "date",
-    header: "Data",
-    accessorFn: (row) => row.date,
+    accessorKey: "date",
+    header: "Data e Hora",
     cell: ({ row }) => {
       return format(
-        convertToLocalDate(row.original.date),
+        dayjs(row.original.date).tz(BRAZIL_TIMEZONE).toDate(),
         "dd/MM/yyyy 'às' HH:mm",
         {
           locale: ptBR,
         },
       );
     },
-    enableSorting: true,
-    sortingFn: "datetime",
   },
   {
-    id: "patient-name",
+    accessorKey: "patient.name",
     header: "Paciente",
-    accessorFn: (row) => row.patient.name,
     cell: ({ row }) => (
-      <span className="font-medium text-blue-700 dark:text-blue-300">
-        {row.original.patient.name}
-      </span>
+      <div>
+        <div className="font-medium">{row.original.patient.name}</div>
+        <div className="text-muted-foreground text-sm">
+          {row.original.patient.email}
+        </div>
+      </div>
     ),
-    enableSorting: true,
   },
   {
-    id: "doctor-name",
+    accessorKey: "doctor.name",
     header: "Médico",
-    accessorFn: (row) => row.doctor.name,
     cell: ({ row }) => (
-      <span className="font-medium text-blue-700 dark:text-blue-300">
-        {row.original.doctor.name}
-      </span>
+      <div>
+        <div className="font-medium">Dr. {row.original.doctor.name}</div>
+        <div className="text-muted-foreground text-sm">
+          {row.original.doctor.specialty}
+        </div>
+      </div>
     ),
-    enableSorting: true,
   },
   {
-    id: "doctor-specialty",
-    header: "Especialidade",
-    accessorFn: (row) => row.doctor.specialty,
-    cell: ({ row }) => (
-      <span className="text-sm text-blue-600 dark:text-blue-400">
-        {row.original.doctor.specialty}
-      </span>
-    ),
-    enableSorting: true,
-  },
-  {
-    id: "price",
+    accessorKey: "appointmentPriceInCents",
     header: "Valor",
-    accessorFn: (row) => row.appointmentPriceInCents,
     cell: ({ row }) => {
       const value = row.original.appointmentPriceInCents / 100;
       return new Intl.NumberFormat("pt-BR", {
@@ -238,28 +211,28 @@ export const createAppointmentsTableColumns = (
         currency: "BRL",
       }).format(value);
     },
-    enableSorting: true,
-    sortingFn: "alphanumeric",
   },
   {
-    id: "status",
+    accessorKey: "status",
     header: "Status",
-    accessorFn: (row) => row.status,
     cell: ({ row }) => {
-      const status = row.original.status || "pending";
+      const status = row.original.status;
 
       const statusMap: Record<string, { label: string; className: string }> = {
         pending: {
           label: "Pendente",
-          className: "bg-yellow-100 text-yellow-800 border-yellow-200",
+          className:
+            "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800",
         },
         confirmed: {
-          label: "Agendamento pago",
-          className: "bg-green-100 text-green-800 border-green-200",
+          label: "Confirmado",
+          className:
+            "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800",
         },
         canceled: {
           label: "Cancelado",
-          className: "bg-red-100 text-red-800 border-red-200",
+          className:
+            "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800",
         },
       };
 
@@ -273,19 +246,11 @@ export const createAppointmentsTableColumns = (
         </span>
       );
     },
-    enableSorting: true,
   },
   {
     id: "actions",
-    header: "Ações",
     cell: ({ row }) => (
-      <ActionsCell appointment={row.original} onEdit={onEdit} />
+      <ActionsCell appointment={row.original} onEdit={() => {}} />
     ),
-    enableSorting: false,
-    enableHiding: false,
   },
 ];
-
-export const appointmentsTableColumns = createAppointmentsTableColumns(
-  () => {},
-);

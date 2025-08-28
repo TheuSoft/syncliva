@@ -2,6 +2,9 @@
 
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import { Check, Edit, MoreVertical, X } from "lucide-react";
 import { useState } from "react";
 
@@ -12,9 +15,14 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { formatCurrencyInCents } from "@/helpers/currency";
-import { convertToLocalDate } from "@/helpers/date";
 import { cn } from "@/lib/utils";
 import type { AppointmentWithRelations } from "@/types/appointments";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+// Configurar timezone padrão para Brasil
+const BRAZIL_TIMEZONE = "America/Sao_Paulo";
 
 interface AppointmentCardProps {
   appointment: AppointmentWithRelations;
@@ -70,41 +78,48 @@ export function AppointmentCard({
       <PopoverTrigger asChild>
         <div
           className={cn(
-            "group relative cursor-pointer rounded border p-1.5 text-xs transition-all duration-200 sm:p-2",
+            "group relative flex h-full min-h-[100px] cursor-pointer flex-col rounded-lg border-2 p-2 text-xs transition-all duration-300 hover:scale-[1.02] hover:shadow-lg sm:min-h-[110px] sm:p-2.5",
             getStatusColor(appointment.status),
-            "min-h-0 hover:scale-[1.02] hover:shadow-sm",
+            "w-full max-w-full overflow-hidden",
+            "from-background to-muted/20 bg-gradient-to-br",
             className,
           )}
         >
-          <div className="mb-1 flex items-start justify-between">
-            <div className="text-[9px] leading-tight font-semibold sm:text-[10px]">
-              {format(convertToLocalDate(appointment.date), "HH:mm")}
+          {/* Header com horário e status */}
+          <div className="mb-1.5 flex items-start justify-between">
+            <div className="bg-primary/10 border-primary/20 text-primary rounded-full border px-1.5 py-0.5 text-xs font-bold shadow-sm sm:px-2 sm:py-1 sm:text-sm">
+              {dayjs(appointment.date).tz(BRAZIL_TIMEZONE).format("HH:mm")}
             </div>
             <div className="flex-shrink-0 opacity-0 transition-opacity group-hover:opacity-100">
-              <MoreVertical className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+              <MoreVertical className="text-muted-foreground h-2.5 w-2.5 sm:h-3 sm:w-3" />
             </div>
           </div>
 
-          <div className="space-y-0.5 sm:space-y-1">
-            <div className="truncate text-[9px] leading-tight font-medium sm:text-[11px]">
-              {appointment.patient.name}
+          {/* Conteúdo principal */}
+          <div className="flex min-w-0 flex-1 flex-col space-y-1">
+            <div className="space-y-0.5">
+              <div className="text-foreground truncate text-xs leading-tight font-semibold sm:text-sm">
+                {appointment.patient.name}
+              </div>
+              <div className="text-muted-foreground truncate text-xs leading-tight">
+                Dr. {appointment.doctor.name}
+              </div>
             </div>
-            <div className="truncate text-[8px] leading-tight opacity-75 sm:text-[10px]">
-              Dr. {appointment.doctor.name}
-            </div>
-            <div className="flex items-center justify-between gap-1">
-              <span className="text-[8px] leading-tight opacity-60 sm:text-[9px]">
+
+            {/* Footer com preço e status */}
+            <div className="mt-auto flex min-w-0 items-center justify-between gap-1.5 pt-1.5">
+              <span className="text-primary truncate text-xs leading-tight font-bold sm:text-sm">
                 {formatCurrencyInCents(appointment.appointmentPriceInCents)}
               </span>
               <span
                 className={cn(
-                  "flex-shrink-0 rounded px-1 py-0.5 text-[7px] leading-none font-bold uppercase sm:text-[8px]",
+                  "flex-shrink-0 rounded-full px-1.5 py-0.5 text-xs leading-none font-bold uppercase shadow-sm sm:px-2 sm:py-1",
                   appointment.status === "confirmed" &&
-                    "bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-200",
+                    "border border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
                   appointment.status === "pending" &&
-                    "bg-yellow-200 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200",
+                    "border border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
                   appointment.status === "canceled" &&
-                    "bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-200",
+                    "border border-red-200 bg-red-100 text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300",
                 )}
               >
                 {getStatusLabel(appointment.status).substring(0, 4)}
@@ -114,15 +129,22 @@ export function AppointmentCard({
         </div>
       </PopoverTrigger>
 
-      <PopoverContent className="w-80 border-0 p-0 shadow-xl" align="start">
+      <PopoverContent
+        className="z-50 w-72 max-w-[95vw] border-0 p-0 shadow-2xl sm:w-80 lg:w-[380px] xl:w-[420px]"
+        align="center"
+        side="bottom"
+        sideOffset={8}
+        avoidCollisions={true}
+        collisionPadding={16}
+      >
         <div className="bg-background dark:bg-background border-border dark:border-border overflow-hidden rounded-xl border shadow-2xl">
           {/* Header com data e valor */}
-          <div className="from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/20 border-border/50 dark:border-border/50 border-b bg-gradient-to-r p-4">
+          <div className="from-primary/10 to-primary/20 dark:from-primary/20 dark:to-primary/30 border-border/50 dark:border-border/50 border-b bg-gradient-to-r p-4 sm:p-5">
             <div className="flex items-start justify-between">
-              <div className="space-y-1">
-                <h4 className="text-foreground dark:text-foreground text-base font-bold">
+              <div className="space-y-2">
+                <h4 className="text-foreground dark:text-foreground text-sm font-bold sm:text-base">
                   {format(
-                    convertToLocalDate(appointment.date),
+                    dayjs(appointment.date).tz(BRAZIL_TIMEZONE).toDate(),
                     "dd/MM/yyyy 'às' HH:mm",
                     {
                       locale: ptBR,
@@ -130,11 +152,11 @@ export function AppointmentCard({
                   )}
                 </h4>
                 <div
-                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                  className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm ${
                     appointment.status === "confirmed"
-                      ? "border border-green-200 bg-green-100 text-green-700 dark:border-green-700 dark:bg-green-900/40 dark:text-green-300"
+                      ? "border border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
                       : appointment.status === "pending"
-                        ? "border border-yellow-200 bg-yellow-100 text-yellow-700 dark:border-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300"
+                        ? "border border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
                         : "border border-red-200 bg-red-100 text-red-700 dark:border-red-700 dark:bg-red-900/40 dark:text-red-300"
                   }`}
                 >
@@ -142,7 +164,7 @@ export function AppointmentCard({
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-primary dark:text-primary text-xl font-bold">
+                <p className="text-primary dark:text-primary text-xl font-bold sm:text-2xl">
                   {formatCurrencyInCents(appointment.appointmentPriceInCents)}
                 </p>
               </div>
@@ -150,38 +172,42 @@ export function AppointmentCard({
           </div>
 
           {/* Conteúdo principal */}
-          <div className="space-y-4 p-4">
-            <div>
-              <p className="text-foreground dark:text-foreground mb-1 text-sm font-semibold">
-                Paciente:
-              </p>
-              <p className="text-foreground dark:text-foreground text-sm font-medium">
-                {appointment.patient.name}
-              </p>
-              <p className="text-muted-foreground dark:text-muted-foreground text-xs">
-                {appointment.patient.email}
-              </p>
-              <p className="text-muted-foreground dark:text-muted-foreground text-xs">
-                {appointment.patient.phoneNumber}
-              </p>
-            </div>
+          <div className="space-y-3 p-4 sm:p-5">
+            <div className="space-y-2.5">
+              <div className="bg-muted/30 rounded-lg p-3 sm:p-3.5">
+                <p className="text-foreground dark:text-foreground mb-2 flex items-center gap-2 text-xs font-semibold sm:text-sm">
+                  <div className="bg-primary h-1.5 w-1.5 rounded-full sm:h-2 sm:w-2"></div>
+                  Paciente
+                </p>
+                <p className="text-foreground dark:text-foreground text-xs font-medium sm:text-sm">
+                  {appointment.patient.name}
+                </p>
+                <p className="text-muted-foreground dark:text-muted-foreground text-xs">
+                  {appointment.patient.email}
+                </p>
+                <p className="text-muted-foreground dark:text-muted-foreground text-xs">
+                  {appointment.patient.phoneNumber}
+                </p>
+              </div>
 
-            <div>
-              <p className="text-foreground dark:text-foreground mb-1 text-sm font-semibold">
-                Médico:
-              </p>
-              <p className="text-foreground dark:text-foreground text-sm font-medium">
-                Dr. {appointment.doctor.name}
-              </p>
-              <p className="text-muted-foreground dark:text-muted-foreground text-xs">
-                {appointment.doctor.specialty}
-              </p>
+              <div className="bg-muted/30 rounded-lg p-3 sm:p-3.5">
+                <p className="text-foreground dark:text-foreground mb-2 flex items-center gap-2 text-xs font-semibold sm:text-sm">
+                  <div className="bg-primary h-1.5 w-1.5 rounded-full sm:h-2 sm:w-2"></div>
+                  Médico
+                </p>
+                <p className="text-foreground dark:text-foreground text-xs font-medium sm:text-sm">
+                  Dr. {appointment.doctor.name}
+                </p>
+                <p className="text-muted-foreground dark:text-muted-foreground text-xs">
+                  {appointment.doctor.specialty}
+                </p>
+              </div>
             </div>
           </div>
 
           {/* Footer com botões - só mostrar se não for médico */}
           {!isDoctor && (
-            <div className="bg-muted/20 dark:bg-muted/5 border-border/50 dark:border-border/50 border-t p-4">
+            <div className="bg-muted/20 dark:bg-muted/5 border-border/50 dark:border-border/50 border-t p-3 sm:p-4">
               <div className="flex gap-2">
                 {canConfirm && onConfirm && (
                   <Button
@@ -190,10 +216,12 @@ export function AppointmentCard({
                       onConfirm(appointment);
                       setIsOpen(false);
                     }}
-                    className="flex-1 cursor-pointer border-0 bg-green-600 text-white shadow-sm transition-all hover:bg-green-700 hover:shadow-md"
+                    className="flex-1 cursor-pointer border-0 bg-emerald-600 text-xs text-white shadow-sm transition-all hover:bg-emerald-700 hover:shadow-md focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:outline-none sm:text-sm"
                     title="Confirmar agendamento"
+                    aria-label="Confirmar agendamento"
                   >
-                    <Check className="h-4 w-4" />
+                    <Check className="mr-1 h-3 w-3 sm:h-4 sm:w-4" />
+                    Confirmar
                   </Button>
                 )}
 
@@ -205,10 +233,12 @@ export function AppointmentCard({
                       onEdit(appointment);
                       setIsOpen(false);
                     }}
-                    className="border-border dark:border-border hover:bg-accent dark:hover:bg-accent flex-1 cursor-pointer shadow-sm transition-all hover:shadow-md"
+                    className="border-border dark:border-border hover:bg-accent dark:hover:bg-accent flex-1 cursor-pointer text-xs shadow-sm transition-all hover:shadow-md focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none sm:text-sm"
                     title="Editar agendamento"
+                    aria-label="Editar agendamento"
                   >
-                    <Edit className="h-4 w-4" />
+                    <Edit className="mr-1 h-3 w-3 sm:h-4 sm:w-4" />
+                    Editar
                   </Button>
                 )}
 
@@ -220,10 +250,12 @@ export function AppointmentCard({
                       onCancel(appointment);
                       setIsOpen(false);
                     }}
-                    className="flex-1 cursor-pointer border-red-200 text-red-600 shadow-sm transition-all hover:border-red-300 hover:bg-red-50 hover:shadow-md dark:border-red-800 dark:text-red-400 dark:hover:border-red-700 dark:hover:bg-red-950/20"
+                    className="flex-1 cursor-pointer border-red-200 text-xs text-red-600 shadow-sm transition-all hover:border-red-300 hover:bg-red-50 hover:shadow-md focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none sm:text-sm dark:border-red-800 dark:text-red-400 dark:hover:border-red-700 dark:hover:bg-red-950/20"
                     title="Cancelar agendamento"
+                    aria-label="Cancelar agendamento"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="mr-1 h-3 w-3 sm:h-4 sm:w-4" />
+                    Cancelar
                   </Button>
                 )}
               </div>
