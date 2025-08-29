@@ -23,8 +23,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import UserDetailsDialog from "./user-details-dialog";
 import EditUserForm from "./edit-user-form";
+import UserDetailsDialog from "./user-details-dialog";
 
 export default function AdminsList() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);

@@ -1,10 +1,12 @@
 "use client";
 
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useAction } from "next-safe-action/hooks";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { z } from "zod";
 
+import { updateUser } from "@/actions/update-user";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,9 +31,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-import { useAction } from "next-safe-action/hooks";
-import { updateUser } from "@/actions/update-user";
 
 const formSchema = z.object({
   userId: z.string().min(1, "ID do usuário é obrigatório"),

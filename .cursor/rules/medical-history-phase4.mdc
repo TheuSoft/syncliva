@@ -1,0 +1,734 @@
+# FASE 4: Gestão de Documentos
+
+## Objetivo
+Upload, organização e visualização de documentos médicos com categorização automática e sistema de busca.
+
+## Duração
+**Semana 6-7**
+
+## Atividades Principais
+
+### 1. Extensões no Banco de Dados
+
+#### Nova Tabela: medical_documents
+```sql
+CREATE TABLE "medical_documents" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  "patient_id" uuid NOT NULL REFERENCES "patients"("id") ON DELETE CASCADE,
+  "uploaded_by" uuid NOT NULL REFERENCES "users"("id"),
+  "file_name" text NOT NULL,
+  "file_path" text NOT NULL,
+  "file_size" bigint NOT NULL,
+  "mime_type" text NOT NULL,
+  "document_type" document_type_enum NOT NULL,
+  "category" text,
+  "description" text,
+  "tags" text[] DEFAULT '{}',
+  "metadata" jsonb,
+  "version" integer DEFAULT 1 NOT NULL,
+  "is_active" boolean DEFAULT true NOT NULL,
+  "created_at" timestamp DEFAULT now() NOT NULL,
+  "updated_at" timestamp DEFAULT now() NOT NULL
+);
+```
+
+#### Novo Enum: document_type_enum
+```sql
+CREATE TYPE "document_type" AS ENUM(
+  'examination',
+  'report',
+  'prescription',
+  'image',
+  'lab_result',
+  'other'
+);
+```
+
+#### Nova Tabela: document_versions
+```sql
+CREATE TABLE "document_versions" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  "document_id" uuid NOT NULL REFERENCES "medical_documents"("id") ON DELETE CASCADE,
+  "version" integer NOT NULL,
+  "file_path" text NOT NULL,
+  "file_size" bigint NOT NULL,
+  "uploaded_by" uuid NOT NULL REFERENCES "users"("id"),
+  "change_notes" text,
+  "created_at" timestamp DEFAULT now() NOT NULL
+);
+```
+
+### 2. Schema Drizzle
+
+#### Arquivo: src/db/schema.ts
+```typescript
+export const documentTypeEnum = pgEnum("document_type", [
+  "examination",
+  "report", 
+  "prescription",
+  "image",
+  "lab_result",
+  "other"
+]);
+
+export const medicalDocumentsTable = pgTable("medical_documents", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  patientId: uuid("patient_id")
+    .notNull()
+    .references(() => patientsTable.id, { onDelete: "cascade" }),
+  uploadedBy: uuid("uploaded_by")
+    .notNull()
+    .references(() => usersTable.id),
+  fileName: text("file_name").notNull(),
+  filePath: text("file_path").notNull(),
+  fileSize: bigint("file_size", { mode: "number" }).notNull(),
+  mimeType: text("mime_type").notNull(),
+  documentType: documentTypeEnum("document_type").notNull(),
+  category: text("category"),
+  description: text("description"),
+  tags: text("tags").array().default([]),
+  metadata: jsonb("metadata"),
+  version: integer("version").default(1).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+export const documentVersionsTable = pgTable("document_versions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  documentId: uuid("document_id")
+    .notNull()
+    .references(() => medicalDocumentsTable.id, { onDelete: "cascade" }),
+  version: integer("version").notNull(),
+  filePath: text("file_path").notNull(),
+  fileSize: bigint("file_size", { mode: "number" }).notNull(),
+  uploadedBy: uuid("uploaded_by")
+    .notNull()
+    .references(() => usersTable.id),
+  changeNotes: text("change_notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const medicalDocumentsTableRelations = relations(medicalDocumentsTable, ({ one, many }) => ({
+  patient: one(patientsTable, {
+    fields: [medicalDocumentsTable.patientId],
+    references: [patientsTable.id],
+  }),
+  uploadedBy: one(usersTable, {
+    fields: [medicalDocumentsTable.uploadedBy],
+    references: [usersTable.id],
+  }),
+  versions: many(documentVersionsTable),
+}));
+```
+
+### 3. Server Actions
+
+#### Arquivo: src/actions/upload-document/index.ts
+```typescript
+"use server";
+
+import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import { writeFile, mkdir } from "fs/promises";
+import { join } from "path";
+
+import { db } from "@/db";
+import { medicalDocumentsTable } from "@/db/schema";
+import { auth } from "@/lib/auth";
+import { actionClient } from "@/lib/next-safe-action";
+
+import { uploadDocumentSchema } from "./schema";
+
+export const uploadDocument = actionClient
+  .schema(uploadDocumentSchema)
+  .action(async ({ parsedInput }) => {
+    try {
+      const session = await auth.api.getSession({
+        headers: await headers(),
+      });
+
+      if (!session?.user) {
+        throw new Error("Unauthorized");
+      }
+
+      if (session.user.role !== "doctor") {
+        throw new Error("Apenas médicos podem fazer upload de documentos");
+      }
+
+      const { patientId, file, documentType, category, description, tags } = parsedInput;
+
+      // Verificar se o paciente existe
+      const patient = await db
+        .select({ id: patientsTable.id })
+        .from(patientsTable)
+        .where(eq(patientsTable.id, patientId))
+        .limit(1);
+
+      if (patient.length === 0) {
+        return {
+          success: false,
+          error: "Paciente não encontrado",
+        };
+      }
+
+      // Processar arquivo
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+
+      // Criar diretório se não existir
+      const uploadDir = join(process.cwd(), "public", "uploads", "documents", patientId);
+      await mkdir(uploadDir, { recursive: true });
+
+      // Gerar nome único para o arquivo
+      const timestamp = Date.now();
+      const fileName = `${timestamp}_${file.name}`;
+      const filePath = join(uploadDir, fileName);
+
+      // Salvar arquivo
+      await writeFile(filePath, buffer);
+
+      // Determinar categoria automática baseada no tipo
+      const autoCategory = getAutoCategory(documentType, file.name);
+
+      // Criar documento no banco
+      const [document] = await db
+        .insert(medicalDocumentsTable)
+        .values({
+          patientId,
+          uploadedBy: session.user.id,
+          fileName: file.name,
+          filePath: `/uploads/documents/${patientId}/${fileName}`,
+          fileSize: buffer.length,
+          mimeType: file.type,
+          documentType,
+          category: category || autoCategory,
+          description,
+          tags: tags || [],
+          metadata: {
+            originalName: file.name,
+            uploadedAt: new Date().toISOString(),
+          },
+        })
+        .returning();
+
+      revalidatePath(`/doctor/patients/${patientId}`);
+
+      return {
+        success: true,
+        data: document,
+        message: "Documento enviado com sucesso!",
+      };
+
+    } catch (error) {
+      console.error("Erro ao fazer upload do documento:", error);
+      throw new Error(error instanceof Error ? error.message : "Erro interno do servidor");
+    }
+  });
+
+function getAutoCategory(documentType: string, fileName: string): string {
+  const lowerFileName = fileName.toLowerCase();
+  
+  if (documentType === "examination") {
+    if (lowerFileName.includes("raio") || lowerFileName.includes("x-ray")) return "Radiologia";
+    if (lowerFileName.includes("tomografia") || lowerFileName.includes("ct")) return "Tomografia";
+    if (lowerFileName.includes("ressonancia") || lowerFileName.includes("mri")) return "Ressonância";
+    return "Exames Gerais";
+  }
+  
+  if (documentType === "lab_result") {
+    if (lowerFileName.includes("sangue") || lowerFileName.includes("blood")) return "Exames de Sangue";
+    if (lowerFileName.includes("urina") || lowerFileName.includes("urine")) return "Exames de Urina";
+    return "Exames Laboratoriais";
+  }
+  
+  return "Outros";
+}
+```
+
+#### Arquivo: src/actions/upload-document/schema.ts
+```typescript
+import { z } from "zod";
+
+export const uploadDocumentSchema = z.object({
+  patientId: z.string().uuid("ID do paciente inválido"),
+  file: z.instanceof(File, { message: "Arquivo é obrigatório" }),
+  documentType: z.enum(["examination", "report", "prescription", "image", "lab_result", "other"]),
+  category: z.string().optional(),
+  description: z.string().optional(),
+  tags: z.array(z.string()).default([]),
+});
+
+export type UploadDocumentSchema = z.infer<typeof uploadDocumentSchema>;
+```
+
+### 4. Interface do Usuário
+
+#### Componente de Upload de Documentos
+```typescript
+// src/app/(doctor)/doctor/patients/[patientId]/_components/document-upload.tsx
+export default function DocumentUpload({ patientId }: { patientId: string }) {
+  const [isUploading, setIsUploading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+
+  const uploadDocumentAction = useAction(uploadDocument, {
+    onSuccess: ({ data }) => {
+      if (data?.success) {
+        toast.success("Documento enviado com sucesso!");
+        setIsUploading(false);
+      }
+    },
+    onError: ({ error }) => {
+      toast.error("Erro ao enviar documento", {
+        description: error.serverError || "Tente novamente",
+      });
+      setIsUploading(false);
+    },
+  });
+
+  const handleFileSelect = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    handleUpload(file);
+  };
+
+  const handleUpload = (file: File) => {
+    setIsUploading(true);
+
+    // Detectar tipo de documento baseado na extensão
+    const documentType = detectDocumentType(file.name);
+
+    uploadDocumentAction.execute({
+      patientId,
+      file,
+      documentType,
+    });
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileSelect(e.dataTransfer.files);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Enviar Documento</CardTitle>
+        <CardDescription>
+          Faça upload de exames, laudos e outros documentos médicos
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div
+          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+            dragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25"
+          }`}
+          onDragEnter={handleDrag}
+          onDragLeave={handleDrag}
+          onDragOver={handleDrag}
+          onDrop={handleDrop}
+        >
+          <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+          <p className="text-lg font-medium mb-2">
+            Arraste e solte um arquivo aqui
+          </p>
+          <p className="text-sm text-muted-foreground mb-4">
+            ou clique para selecionar um arquivo
+          </p>
+          
+          <Input
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+            onChange={(e) => handleFileSelect(e.target.files)}
+            className="hidden"
+            id="file-upload"
+            disabled={isUploading}
+          />
+          
+          <Button
+            variant="outline"
+            onClick={() => document.getElementById("file-upload")?.click()}
+            disabled={isUploading}
+          >
+            {isUploading ? "Enviando..." : "Selecionar Arquivo"}
+          </Button>
+          
+          {isUploading && (
+            <div className="mt-4">
+              <Progress value={33} className="w-full" />
+              <p className="text-sm text-muted-foreground mt-2">
+                Processando arquivo...
+              </p>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function detectDocumentType(fileName: string): "examination" | "report" | "prescription" | "image" | "lab_result" | "other" {
+  const lowerName = fileName.toLowerCase();
+  
+  if (lowerName.includes("exame") || lowerName.includes("lab") || lowerName.includes("sangue")) {
+    return "lab_result";
+  }
+  
+  if (lowerName.includes("raio") || lowerName.includes("tomografia") || lowerName.includes("ressonancia")) {
+    return "examination";
+  }
+  
+  if (lowerName.includes("laudo") || lowerName.includes("relatorio")) {
+    return "report";
+  }
+  
+  if (lowerName.includes("prescricao") || lowerName.includes("receita")) {
+    return "prescription";
+  }
+  
+  if (lowerName.includes("jpg") || lowerName.includes("jpeg") || lowerName.includes("png")) {
+    return "image";
+  }
+  
+  return "other";
+}
+```
+
+#### Componente de Lista de Documentos
+```typescript
+// src/app/(doctor)/doctor/patients/[patientId]/_components/documents-list.tsx
+export default function DocumentsList({ patientId }: { patientId: string }) {
+  const { data: documents, isLoading } = useQuery({
+    queryKey: ["patient-documents", patientId],
+    queryFn: () => getPatientDocuments(patientId),
+  });
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedType, setSelectedType] = useState<string>("all");
+
+  const filteredDocuments = documents?.filter(doc => {
+    const matchesSearch = doc.fileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         doc.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === "all" || doc.category === selectedCategory;
+    const matchesType = selectedType === "all" || doc.documentType === selectedType;
+    
+    return matchesSearch && matchesCategory && matchesType;
+  });
+
+  const categories = [...new Set(documents?.map(doc => doc.category).filter(Boolean) || [])];
+  const documentTypes = [...new Set(documents?.map(doc => doc.documentType) || [])];
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Documentos Médicos</CardTitle>
+            <CardDescription>
+              Exames, laudos e outros documentos do paciente
+            </CardDescription>
+          </div>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
+            <Input
+              placeholder="Buscar documentos..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          
+          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Categoria" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as categorias</SelectItem>
+              {categories.map(category => (
+                <SelectItem key={category} value={category}>
+                  {category}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          <Select value={selectedType} onValueChange={setSelectedType}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os tipos</SelectItem>
+              {documentTypes.map(type => (
+                <SelectItem key={type} value={type}>
+                  {getDocumentTypeLabel(type)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </CardHeader>
+      
+      <CardContent>
+        {isLoading ? (
+          <div className="text-center py-8">
+            <p>Carregando documentos...</p>
+          </div>
+        ) : filteredDocuments && filteredDocuments.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredDocuments.map((document) => (
+              <DocumentCard key={document.id} document={document} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>Nenhum documento encontrado</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function getDocumentTypeLabel(type: string): string {
+  const labels = {
+    examination: "Exame",
+    report: "Laudo",
+    prescription: "Prescrição",
+    image: "Imagem",
+    lab_result: "Exame Laboratorial",
+    other: "Outro"
+  };
+  return labels[type as keyof typeof labels] || type;
+}
+```
+
+#### Componente de Card de Documento
+```typescript
+// src/app/(doctor)/doctor/patients/[patientId]/_components/document-card.tsx
+interface DocumentCardProps {
+  document: {
+    id: string;
+    fileName: string;
+    filePath: string;
+    documentType: string;
+    category?: string;
+    description?: string;
+    tags: string[];
+    createdAt: string;
+    fileSize: number;
+  };
+}
+
+export default function DocumentCard({ document }: DocumentCardProps) {
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+  const getFileIcon = (documentType: string) => {
+    switch (documentType) {
+      case "examination":
+        return <Scan className="h-8 w-8" />;
+      case "report":
+        return <FileText className="h-8 w-8" />;
+      case "prescription":
+        return <Pills className="h-8 w-8" />;
+      case "image":
+        return <Image className="h-8 w-8" />;
+      case "lab_result":
+        return <TestTube className="h-8 w-8" />;
+      default:
+        return <File className="h-8 w-8" />;
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
+
+  return (
+    <>
+      <Card className="hover:shadow-md transition-shadow cursor-pointer">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center space-x-3">
+              {getFileIcon(document.documentType)}
+              <div className="flex-1 min-w-0">
+                <CardTitle className="text-sm truncate">
+                  {document.fileName}
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  {formatFileSize(document.fileSize)}
+                </CardDescription>
+              </div>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setIsPreviewOpen(true)}>
+                  <Eye className="h-4 w-4 mr-2" />
+                  Visualizar
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Download className="h-4 w-4 mr-2" />
+                  Download
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Share className="h-4 w-4 mr-2" />
+                  Compartilhar
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </CardHeader>
+        
+        <CardContent className="pt-0">
+          {document.description && (
+            <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+              {document.description}
+            </p>
+          )}
+          
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center space-x-2">
+              <Badge variant="outline" className="text-xs">
+                {getDocumentTypeLabel(document.documentType)}
+              </Badge>
+              {document.category && (
+                <Badge variant="secondary" className="text-xs">
+                  {document.category}
+                </Badge>
+              )}
+            </div>
+            <span>
+              {new Date(document.createdAt).toLocaleDateString()}
+            </span>
+          </div>
+          
+          {document.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {document.tags.slice(0, 3).map((tag, index) => (
+                <Badge key={index} variant="outline" className="text-xs">
+                  {tag}
+                </Badge>
+              ))}
+              {document.tags.length > 3 && (
+                <Badge variant="outline" className="text-xs">
+                  +{document.tags.length - 3}
+                </Badge>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <DocumentPreview
+        document={document}
+        open={isPreviewOpen}
+        onOpenChange={setIsPreviewOpen}
+      />
+    </>
+  );
+}
+```
+
+### 5. Integração com Sistema Existente
+
+#### Extensão da Página do Paciente
+```typescript
+// src/app/(doctor)/doctor/patients/[patientId]/page.tsx
+// Adicionar aba de documentos
+<Tabs defaultValue="info" className="w-full">
+  <TabsList>
+    <TabsTrigger value="info">Informações</TabsTrigger>
+    <TabsTrigger value="anamnesis">Anamnese</TabsTrigger>
+    <TabsTrigger value="documents">Documentos</TabsTrigger>
+    <TabsTrigger value="appointments">Consultas</TabsTrigger>
+  </TabsList>
+  
+  <TabsContent value="documents">
+    <div className="space-y-6">
+      <DocumentUpload patientId={patientId} />
+      <DocumentsList patientId={patientId} />
+    </div>
+  </TabsContent>
+</Tabs>
+```
+
+### 6. Testes e Validação
+
+#### Testes de Funcionalidade
+- Verificar upload de documentos
+- Testar categorização automática
+- Validar busca e filtros
+- Testar visualização de documentos
+
+#### Testes de Interface
+- Testar drag and drop
+- Validar responsividade
+- Testar diferentes tipos de arquivo
+- Verificar feedback visual
+
+## Critérios de Conclusão
+
+### Funcionalidades Implementadas
+- Tabela medical_documents criada e migrada
+- Sistema de upload de arquivos
+- Categorização automática
+- Busca e filtros avançados
+- Visualização de documentos
+- Sistema de tags
+- Controle de versões
+
+### Integração com Sistema Existente
+- Nova aba na página do paciente
+- Manutenção de funcionalidades existentes
+- Revalidação de cache
+- Consistência de interface
+
+### Segurança e Performance
+- Validação de tipos de arquivo
+- Controle de tamanho
+- Permissões de acesso
+- Armazenamento seguro
+
+## Resultado da Fase 4
+Ao final desta fase, os médicos poderão:
+- Fazer upload de documentos médicos
+- Organizar documentos por categoria
+- Buscar documentos rapidamente
+- Visualizar documentos integrados
+- Gerenciar versões de documentos
+
+O sistema agora possui gestão completa de documentos médicos com organização e busca avançadas.
+description:
+globs:
+alwaysApply: true
+---

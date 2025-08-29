@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 
-const profileSchema = z.object({
+const profileSchema = z.object({z
   name: z.string().min(1, "Nome é obrigatório"),
   email: z.string().email("Email inválido"),
   phone: z.string().optional(),

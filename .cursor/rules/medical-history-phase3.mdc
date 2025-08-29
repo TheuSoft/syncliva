@@ -1,0 +1,612 @@
+# FASE 3: Anamnese Estruturada
+
+## Objetivo
+Sistema completo de anamnese do paciente com campos flexíveis por especialidade e histórico de alterações.
+
+## Duração
+**Semana 4-5**
+
+## Atividades Principais
+
+### 1. Extensões no Banco de Dados
+
+#### Nova Tabela: patient_anamnesis
+```sql
+CREATE TABLE "patient_anamnesis" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  "patient_id" uuid NOT NULL REFERENCES "patients"("id") ON DELETE CASCADE,
+  "personal_history" text,
+  "family_history" text,
+  "social_history" text,
+  "allergies" text[] DEFAULT '{}',
+  "current_medications" text[] DEFAULT '{}',
+  "past_medications" text[] DEFAULT '{}',
+  "surgical_history" text,
+  "obstetric_history" text,
+  "review_of_systems" jsonb,
+  "specialty_fields" jsonb,
+  "last_updated_by" uuid REFERENCES "users"("id"),
+  "created_at" timestamp DEFAULT now() NOT NULL,
+  "updated_at" timestamp DEFAULT now() NOT NULL
+);
+```
+
+#### Nova Tabela: anamnesis_history
+```sql
+CREATE TABLE "anamnesis_history" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  "anamnesis_id" uuid NOT NULL REFERENCES "patient_anamnesis"("id") ON DELETE CASCADE,
+  "changed_by" uuid NOT NULL REFERENCES "users"("id"),
+  "field_name" text NOT NULL,
+  "old_value" text,
+  "new_value" text,
+  "change_date" timestamp DEFAULT now() NOT NULL
+);
+```
+
+### 2. Schema Drizzle
+
+#### Arquivo: src/db/schema.ts
+```typescript
+export const patientAnamnesisTable = pgTable("patient_anamnesis", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  patientId: uuid("patient_id")
+    .notNull()
+    .references(() => patientsTable.id, { onDelete: "cascade" }),
+  personalHistory: text("personal_history"),
+  familyHistory: text("family_history"),
+  socialHistory: text("social_history"),
+  allergies: text("allergies").array().default([]),
+  currentMedications: text("current_medications").array().default([]),
+  pastMedications: text("past_medications").array().default([]),
+  surgicalHistory: text("surgical_history"),
+  obstetricHistory: text("obstetric_history"),
+  reviewOfSystems: jsonb("review_of_systems"),
+  specialtyFields: jsonb("specialty_fields"),
+  lastUpdatedBy: uuid("last_updated_by").references(() => usersTable.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+export const anamnesisHistoryTable = pgTable("anamnesis_history", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  anamnesisId: uuid("anamnesis_id")
+    .notNull()
+    .references(() => patientAnamnesisTable.id, { onDelete: "cascade" }),
+  changedBy: uuid("changed_by")
+    .notNull()
+    .references(() => usersTable.id),
+  fieldName: text("field_name").notNull(),
+  oldValue: text("old_value"),
+  newValue: text("new_value"),
+  changeDate: timestamp("change_date").defaultNow().notNull(),
+});
+
+export const patientAnamnesisTableRelations = relations(patientAnamnesisTable, ({ one, many }) => ({
+  patient: one(patientsTable, {
+    fields: [patientAnamnesisTable.patientId],
+    references: [patientsTable.id],
+  }),
+  lastUpdatedBy: one(usersTable, {
+    fields: [patientAnamnesisTable.lastUpdatedBy],
+    references: [usersTable.id],
+  }),
+  history: many(anamnesisHistoryTable),
+}));
+```
+
+### 3. Server Actions
+
+#### Arquivo: src/actions/update-anamnesis/index.ts
+```typescript
+"use server";
+
+import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+
+import { db } from "@/db";
+import { patientAnamnesisTable, anamnesisHistoryTable } from "@/db/schema";
+import { auth } from "@/lib/auth";
+import { actionClient } from "@/lib/next-safe-action";
+
+import { updateAnamnesisSchema } from "./schema";
+
+export const updateAnamnesis = actionClient
+  .schema(updateAnamnesisSchema)
+  .action(async ({ parsedInput }) => {
+    try {
+      const session = await auth.api.getSession({
+        headers: await headers(),
+      });
+
+      if (!session?.user) {
+        throw new Error("Unauthorized");
+      }
+
+      if (session.user.role !== "doctor") {
+        throw new Error("Apenas médicos podem atualizar anamnese");
+      }
+
+      const { patientId, ...anamnesisData } = parsedInput;
+
+      // Buscar anamnese existente ou criar nova
+      let anamnesis = await db
+        .select()
+        .from(patientAnamnesisTable)
+        .where(eq(patientAnamnesisTable.patientId, patientId))
+        .limit(1);
+
+      if (anamnesis.length === 0) {
+        // Criar nova anamnese
+        const [newAnamnesis] = await db
+          .insert(patientAnamnesisTable)
+          .values({
+            patientId,
+            ...anamnesisData,
+            lastUpdatedBy: session.user.id,
+          })
+          .returning();
+
+        return {
+          success: true,
+          data: newAnamnesis,
+          message: "Anamnese criada com sucesso!",
+        };
+      }
+
+      // Atualizar anamnese existente e registrar mudanças
+      const currentAnamnesis = anamnesis[0];
+      const changes = [];
+
+      for (const [field, newValue] of Object.entries(anamnesisData)) {
+        const oldValue = currentAnamnesis[field as keyof typeof currentAnamnesis];
+        if (oldValue !== newValue) {
+          changes.push({
+            anamnesisId: currentAnamnesis.id,
+            changedBy: session.user.id,
+            fieldName: field,
+            oldValue: oldValue ? String(oldValue) : null,
+            newValue: newValue ? String(newValue) : null,
+          });
+        }
+      }
+
+      // Registrar mudanças no histórico
+      if (changes.length > 0) {
+        await db.insert(anamnesisHistoryTable).values(changes);
+      }
+
+      // Atualizar anamnese
+      const [updatedAnamnesis] = await db
+        .update(patientAnamnesisTable)
+        .set({
+          ...anamnesisData,
+          lastUpdatedBy: session.user.id,
+          updatedAt: new Date(),
+        })
+        .where(eq(patientAnamnesisTable.id, currentAnamnesis.id))
+        .returning();
+
+      revalidatePath(`/doctor/patients/${patientId}`);
+
+      return {
+        success: true,
+        data: updatedAnamnesis,
+        message: "Anamnese atualizada com sucesso!",
+      };
+
+    } catch (error) {
+      console.error("Erro ao atualizar anamnese:", error);
+      throw new Error(error instanceof Error ? error.message : "Erro interno do servidor");
+    }
+  });
+```
+
+#### Arquivo: src/actions/update-anamnesis/schema.ts
+```typescript
+import { z } from "zod";
+
+export const updateAnamnesisSchema = z.object({
+  patientId: z.string().uuid("ID do paciente inválido"),
+  personalHistory: z.string().optional(),
+  familyHistory: z.string().optional(),
+  socialHistory: z.string().optional(),
+  allergies: z.array(z.string()).default([]),
+  currentMedications: z.array(z.string()).default([]),
+  pastMedications: z.array(z.string()).default([]),
+  surgicalHistory: z.string().optional(),
+  obstetricHistory: z.string().optional(),
+  reviewOfSystems: z.record(z.any()).optional(),
+  specialtyFields: z.record(z.any()).optional(),
+});
+
+export type UpdateAnamnesisSchema = z.infer<typeof updateAnamnesisSchema>;
+```
+
+### 4. Interface do Usuário
+
+#### Componente de Anamnese
+```typescript
+// src/app/(doctor)/doctor/patients/[patientId]/_components/patient-anamnesis.tsx
+export default function PatientAnamnesis({ patientId }: { patientId: string }) {
+  const { data: anamnesis, isLoading } = useQuery({
+    queryKey: ["patient-anamnesis", patientId],
+    queryFn: () => getPatientAnamnesis(patientId),
+  });
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    personalHistory: "",
+    familyHistory: "",
+    socialHistory: "",
+    allergies: [] as string[],
+    currentMedications: [] as string[],
+    pastMedications: [] as string[],
+    surgicalHistory: "",
+    obstetricHistory: "",
+    reviewOfSystems: {} as Record<string, any>,
+    specialtyFields: {} as Record<string, any>,
+  });
+
+  const updateAnamnesisAction = useAction(updateAnamnesis, {
+    onSuccess: ({ data }) => {
+      if (data?.success) {
+        toast.success("Anamnese atualizada com sucesso!");
+        setIsEditing(false);
+      }
+    },
+  });
+
+  useEffect(() => {
+    if (anamnesis) {
+      setFormData({
+        personalHistory: anamnesis.personalHistory || "",
+        familyHistory: anamnesis.familyHistory || "",
+        socialHistory: anamnesis.socialHistory || "",
+        allergies: anamnesis.allergies || [],
+        currentMedications: anamnesis.currentMedications || [],
+        pastMedications: anamnesis.pastMedications || [],
+        surgicalHistory: anamnesis.surgicalHistory || "",
+        obstetricHistory: anamnesis.obstetricHistory || "",
+        reviewOfSystems: anamnesis.reviewOfSystems || {},
+        specialtyFields: anamnesis.specialtyFields || {},
+      });
+    }
+  }, [anamnesis]);
+
+  const handleSave = () => {
+    updateAnamnesisAction.execute({
+      patientId,
+      ...formData,
+    });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Anamnese do Paciente</CardTitle>
+            <CardDescription>
+              Histórico médico completo do paciente
+            </CardDescription>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsEditing(!isEditing)}
+          >
+            {isEditing ? "Cancelar" : "Editar"}
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {isEditing ? (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>História Pessoal</Label>
+                <Textarea
+                  value={formData.personalHistory}
+                  onChange={(e) => setFormData({ ...formData, personalHistory: e.target.value })}
+                  placeholder="História pessoal do paciente"
+                  className="min-h-[100px]"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>História Familiar</Label>
+                <Textarea
+                  value={formData.familyHistory}
+                  onChange={(e) => setFormData({ ...formData, familyHistory: e.target.value })}
+                  placeholder="História familiar"
+                  className="min-h-[100px]"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>História Social</Label>
+                <Textarea
+                  value={formData.socialHistory}
+                  onChange={(e) => setFormData({ ...formData, socialHistory: e.target.value })}
+                  placeholder="História social"
+                  className="min-h-[100px]"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>História Cirúrgica</Label>
+                <Textarea
+                  value={formData.surgicalHistory}
+                  onChange={(e) => setFormData({ ...formData, surgicalHistory: e.target.value })}
+                  placeholder="História cirúrgica"
+                  className="min-h-[100px]"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Medicações Atuais</Label>
+                <DynamicList
+                  items={formData.currentMedications}
+                  onChange={(medications) => setFormData({ ...formData, currentMedications: medications })}
+                  placeholder="Adicionar medicação atual"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Medicações Anteriores</Label>
+                <DynamicList
+                  items={formData.pastMedications}
+                  onChange={(medications) => setFormData({ ...formData, pastMedications: medications })}
+                  placeholder="Adicionar medicação anterior"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsEditing(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={updateAnamnesisAction.status === "executing"}
+              >
+                {updateAnamnesisAction.status === "executing" ? "Salvando..." : "Salvar"}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {anamnesis ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label>História Pessoal</Label>
+                    <p className="text-sm text-muted-foreground">
+                      {anamnesis.personalHistory || "Não informado"}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>História Familiar</Label>
+                    <p className="text-sm text-muted-foreground">
+                      {anamnesis.familyHistory || "Não informado"}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>História Social</Label>
+                    <p className="text-sm text-muted-foreground">
+                      {anamnesis.socialHistory || "Não informado"}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>História Cirúrgica</Label>
+                    <p className="text-sm text-muted-foreground">
+                      {anamnesis.surgicalHistory || "Não informado"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Medicações Atuais</Label>
+                    {anamnesis.currentMedications && anamnesis.currentMedications.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {anamnesis.currentMedications.map((medication, index) => (
+                          <Badge key={index} variant="outline">
+                            {medication}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Nenhuma medicação atual</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Medicações Anteriores</Label>
+                    {anamnesis.pastMedications && anamnesis.pastMedications.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {anamnesis.pastMedications.map((medication, index) => (
+                          <Badge key={index} variant="secondary">
+                            {medication}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Nenhuma medicação anterior</p>
+                    )}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>Nenhuma anamnese registrada</p>
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+#### Componente de Lista Dinâmica
+```typescript
+// src/components/ui/dynamic-list.tsx
+interface DynamicListProps {
+  items: string[];
+  onChange: (items: string[]) => void;
+  placeholder: string;
+}
+
+export function DynamicList({ items, onChange, placeholder }: DynamicListProps) {
+  const [newItem, setNewItem] = useState("");
+
+  const handleAdd = () => {
+    if (newItem.trim()) {
+      onChange([...items, newItem.trim()]);
+      setNewItem("");
+    }
+  };
+
+  const handleRemove = (index: number) => {
+    onChange(items.filter((_, i) => i !== index));
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAdd();
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex space-x-2">
+        <Input
+          value={newItem}
+          onChange={(e) => setNewItem(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder={placeholder}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleAdd}
+        >
+          Adicionar
+        </Button>
+      </div>
+      
+      {items.length > 0 && (
+        <div className="space-y-1">
+          {items.map((item, index) => (
+            <div key={index} className="flex items-center justify-between p-2 border rounded">
+              <span className="text-sm">{item}</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => handleRemove(index)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+### 5. Integração com Sistema Existente
+
+#### Extensão da Página do Paciente
+```typescript
+// src/app/(doctor)/doctor/patients/[patientId]/page.tsx
+// Adicionar aba de anamnese
+<Tabs defaultValue="info" className="w-full">
+  <TabsList>
+    <TabsTrigger value="info">Informações</TabsTrigger>
+    <TabsTrigger value="anamnesis">Anamnese</TabsTrigger>
+    <TabsTrigger value="appointments">Consultas</TabsTrigger>
+  </TabsList>
+  
+  <TabsContent value="info">
+    <PatientInfo patient={patient} />
+  </TabsContent>
+  
+  <TabsContent value="anamnesis">
+    <PatientAnamnesis patientId={patientId} />
+  </TabsContent>
+  
+  <TabsContent value="appointments">
+    <PatientAppointments patientId={patientId} />
+  </TabsContent>
+</Tabs>
+```
+
+### 6. Testes e Validação
+
+#### Testes de Funcionalidade
+- Verificar criação de anamnese
+- Testar atualização de campos
+- Validar histórico de mudanças
+- Testar campos dinâmicos
+
+#### Testes de Interface
+- Testar formulário de anamnese
+- Validar lista dinâmica
+- Testar navegação por abas
+- Verificar responsividade
+
+## Critérios de Conclusão
+
+### Funcionalidades Implementadas
+- Tabela patient_anamnesis criada e migrada
+- Tabela anamnesis_history para auditoria
+- Server Actions para CRUD de anamnese
+- Interface completa de anamnese
+- Campos dinâmicos para medicações
+- Histórico de alterações
+- Integração com perfil do paciente
+
+### Integração com Sistema Existente
+- Nova aba na página do paciente
+- Manutenção de funcionalidades existentes
+- Revalidação de cache
+- Consistência de interface
+
+### Qualidade e Auditoria
+- Histórico completo de mudanças
+- Validação de dados
+- Permissões de acesso
+- Interface responsiva
+
+## Resultado da Fase 3
+Ao final desta fase, os médicos poderão:
+- Registrar anamnese completa dos pacientes
+- Atualizar dados de forma estruturada
+- Visualizar histórico de alterações
+- Gerenciar medicações atuais e anteriores
+- Acessar dados por especialidade
+
+O sistema agora possui anamnese estruturada e sempre atualizada para cada paciente.
+description:
+globs:
+alwaysApply: true
+---

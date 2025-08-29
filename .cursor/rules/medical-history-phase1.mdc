@@ -1,0 +1,579 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# FASE 1: Atendimento Médico Básico
+
+## Objetivo
+Criar funcionalidade básica de atendimento médico integrada ao sistema de agendamentos existente, permitindo que médicos registrem dados clínicos durante as consultas.
+
+## Duração
+**Semana 1-2**
+
+## Atividades Principais
+
+### 1. Extensões no Banco de Dados
+
+#### Nova Tabela: medical_visits
+```sql
+CREATE TABLE "medical_visits" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  "appointment_id" uuid NOT NULL REFERENCES "appointments"("id") ON DELETE CASCADE,
+  "chief_complaint" text,
+  "present_illness" text,
+  "physical_examination" text,
+  "diagnosis" text,
+  "treatment_plan" text,
+  "observations" text,
+  "visit_status" visit_status_enum DEFAULT 'in_progress' NOT NULL,
+  "created_at" timestamp DEFAULT now() NOT NULL,
+  "updated_at" timestamp DEFAULT now() NOT NULL
+);
+```
+
+#### Novo Enum: visit_status_enum
+```sql
+CREATE TYPE "visit_status" AS ENUM(
+  'in_progress',
+  'completed',
+  'cancelled'
+);
+```
+
+#### Extensão da Tabela appointments
+```sql
+ALTER TABLE "appointments" ADD COLUMN "has_medical_visit" boolean DEFAULT false;
+ALTER TABLE "appointments" ADD COLUMN "medical_visit_required" boolean DEFAULT true;
+```
+
+### 2. Schema Drizzle
+
+#### Arquivo: src/db/schema.ts
+```typescript
+export const visitStatusEnum = pgEnum("visit_status", [
+  "in_progress",
+  "completed", 
+  "cancelled"
+]);
+
+export const medicalVisitsTable = pgTable("medical_visits", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  appointmentId: uuid("appointment_id")
+    .notNull()
+    .references(() => appointmentsTable.id, { onDelete: "cascade" }),
+  chiefComplaint: text("chief_complaint"),
+  presentIllness: text("present_illness"),
+  physicalExamination: text("physical_examination"),
+  diagnosis: text("diagnosis"),
+  treatmentPlan: text("treatment_plan"),
+  observations: text("observations"),
+  visitStatus: visitStatusEnum("visit_status").default("in_progress").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+export const medicalVisitsTableRelations = relations(medicalVisitsTable, ({ one }) => ({
+  appointment: one(appointmentsTable, {
+    fields: [medicalVisitsTable.appointmentId],
+    references: [appointmentsTable.id],
+  }),
+}));
+
+// Extensão da appointmentsTable
+export const appointmentsTable = pgTable("appointments", {
+  // ... campos existentes ...
+  hasMedicalVisit: boolean("has_medical_visit").default(false),
+  medicalVisitRequired: boolean("medical_visit_required").default(true),
+});
+```
+
+### 3. Server Actions
+
+#### Arquivo: src/actions/create-medical-visit/index.ts
+```typescript
+"use server";
+
+import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+
+import { db } from "@/db";
+import { medicalVisitsTable, appointmentsTable } from "@/db/schema";
+import { auth } from "@/lib/auth";
+import { actionClient } from "@/lib/next-safe-action";
+
+import { createMedicalVisitSchema } from "./schema";
+
+export const createMedicalVisit = actionClient
+  .schema(createMedicalVisitSchema)
+  .action(async ({ parsedInput }) => {
+    try {
+      const session = await auth.api.getSession({
+        headers: await headers(),
+      });
+
+      if (!session?.user) {
+        throw new Error("Unauthorized");
+      }
+
+      if (session.user.role !== "doctor") {
+        throw new Error("Apenas médicos podem criar atendimentos médicos");
+      }
+
+      const { appointmentId, chiefComplaint, presentIllness, physicalExamination, diagnosis, treatmentPlan, observations } = parsedInput;
+
+      // Verificar se o agendamento existe e pertence ao médico
+      const appointment = await db
+        .select({ id: appointmentsTable.id, doctorId: appointmentsTable.doctorId })
+        .from(appointmentsTable)
+        .where(eq(appointmentsTable.id, appointmentId))
+        .limit(1);
+
+      if (appointment.length === 0) {
+        return {
+          success: false,
+          error: "Agendamento não encontrado",
+        };
+      }
+
+      if (appointment[0].doctorId !== session.user.doctorId) {
+        return {
+          success: false,
+          error: "Você não tem permissão para acessar este agendamento",
+        };
+      }
+
+      // Criar o atendimento médico
+      const [medicalVisit] = await db
+        .insert(medicalVisitsTable)
+        .values({
+          appointmentId,
+          chiefComplaint,
+          presentIllness,
+          physicalExamination,
+          diagnosis,
+          treatmentPlan,
+          observations,
+        })
+        .returning();
+
+      // Marcar o agendamento como tendo atendimento médico
+      await db
+        .update(appointmentsTable)
+        .set({
+          hasMedicalVisit: true,
+        })
+        .where(eq(appointmentsTable.id, appointmentId));
+
+      revalidatePath("/doctor/appointments");
+      revalidatePath(`/doctor/medical-visits/${appointmentId}`);
+
+      return {
+        success: true,
+        data: medicalVisit,
+        message: "Atendimento médico criado com sucesso!",
+      };
+
+    } catch (error) {
+      console.error("Erro ao criar atendimento médico:", error);
+      throw new Error(error instanceof Error ? error.message : "Erro interno do servidor");
+    }
+  });
+```
+
+#### Arquivo: src/actions/create-medical-visit/schema.ts
+```typescript
+import { z } from "zod";
+
+export const createMedicalVisitSchema = z.object({
+  appointmentId: z.string().uuid("ID do agendamento inválido"),
+  chiefComplaint: z.string().min(1, "Queixa principal é obrigatória"),
+  presentIllness: z.string().optional(),
+  physicalExamination: z.string().optional(),
+  diagnosis: z.string().optional(),
+  treatmentPlan: z.string().optional(),
+  observations: z.string().optional(),
+});
+
+export type CreateMedicalVisitSchema = z.infer<typeof createMedicalVisitSchema>;
+```
+
+### 4. Interface do Usuário
+
+#### Novo Menu na Sidebar do Médico
+```typescript
+// src/app/(doctor)/_components/doctor-sidebar.tsx
+{
+  name: "Prontuários",
+  href: "/doctor/medical-records",
+  icon: FileText,
+  badge: pendingVisitsCount > 0 ? pendingVisitsCount : undefined,
+}
+```
+
+#### Página de Lista de Prontuários
+```typescript
+// src/app/(doctor)/doctor/medical-records/page.tsx
+export default function MedicalRecordsPage() {
+  return (
+    <PageContainer>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Prontuários</h1>
+          <p className="text-muted-foreground">
+            Gerencie os prontuários dos seus pacientes
+          </p>
+        </div>
+        
+        <MedicalRecordsList />
+      </div>
+    </PageContainer>
+  );
+}
+```
+
+#### Componente de Lista de Prontuários
+```typescript
+// src/app/(doctor)/doctor/medical-records/_components/medical-records-list.tsx
+export default function MedicalRecordsList() {
+  const { data: appointments, isLoading } = useQuery({
+    queryKey: ["doctor-appointments"],
+    queryFn: () => getDoctorAppointments(),
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Paciente</TableHead>
+              <TableHead>Data/Hora</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Atendimento</TableHead>
+              <TableHead className="w-[100px]">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {appointments?.map((appointment) => (
+              <TableRow key={appointment.id}>
+                <TableCell>{appointment.patient.name}</TableCell>
+                <TableCell>
+                  {format(new Date(appointment.date), "dd/MM/yyyy HH:mm")}
+                </TableCell>
+                <TableCell>
+                  <AppointmentStatusBadge status={appointment.status} />
+                </TableCell>
+                <TableCell>
+                  {appointment.hasMedicalVisit ? (
+                    <Badge variant="outline" className="text-green-600">
+                      Atendido
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary">
+                      Pendente
+                    </Badge>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    asChild
+                  >
+                    <Link href={`/doctor/medical-visits/${appointment.id}`}>
+                      {appointment.hasMedicalVisit ? "Ver" : "Atender"}
+                    </Link>
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
+```
+
+#### Página de Atendimento Médico
+```typescript
+// src/app/(doctor)/doctor/medical-visits/[appointmentId]/page.tsx
+export default function MedicalVisitPage({ 
+  params 
+}: { 
+  params: { appointmentId: string } 
+}) {
+  return (
+    <PageContainer>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Atendimento Médico</h1>
+            <p className="text-muted-foreground">
+              Registre os dados clínicos do paciente
+            </p>
+          </div>
+        </div>
+        
+        <MedicalVisitForm appointmentId={params.appointmentId} />
+      </div>
+    </PageContainer>
+  );
+}
+```
+
+#### Formulário de Atendimento
+```typescript
+// src/app/(doctor)/doctor/medical-visits/[appointmentId]/_components/medical-visit-form.tsx
+export default function MedicalVisitForm({ appointmentId }: { appointmentId: string }) {
+  const form = useForm<CreateMedicalVisitSchema>({
+    resolver: zodResolver(createMedicalVisitSchema),
+    defaultValues: {
+      appointmentId,
+      chiefComplaint: "",
+      presentIllness: "",
+      physicalExamination: "",
+      diagnosis: "",
+      treatmentPlan: "",
+      observations: "",
+    },
+  });
+
+  const createMedicalVisitAction = useAction(createMedicalVisit, {
+    onSuccess: ({ data }) => {
+      if (data?.success) {
+        toast.success("Atendimento médico registrado com sucesso!");
+        router.push("/doctor/medical-records");
+      }
+    },
+    onError: ({ error }) => {
+      toast.error("Erro ao registrar atendimento", {
+        description: error.serverError || "Tente novamente",
+      });
+    },
+  });
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(createMedicalVisitAction.execute)} className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Dados do Atendimento</CardTitle>
+            <CardDescription>
+              Preencha os dados clínicos do paciente
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
+              name="chiefComplaint"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Queixa Principal *</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Descreva a queixa principal do paciente"
+                      className="min-h-[100px]"
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="presentIllness"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>História da Doença Atual</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Descreva a história da doença atual"
+                      className="min-h-[100px]"
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="physicalExamination"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Exame Físico</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Descreva os achados do exame físico"
+                      className="min-h-[100px]"
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="diagnosis"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Diagnóstico</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Descreva o diagnóstico"
+                      className="min-h-[100px]"
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="treatmentPlan"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Plano de Tratamento</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Descreva o plano de tratamento"
+                      className="min-h-[100px]"
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="observations"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Observações Adicionais</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Observações adicionais"
+                      className="min-h-[100px]"
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
+
+        <div className="flex justify-end space-x-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.back()}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            type="submit"
+            disabled={createMedicalVisitAction.status === "executing"}
+          >
+            {createMedicalVisitAction.status === "executing" ? "Salvando..." : "Salvar Atendimento"}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+}
+```
+
+### 5. Integração com Sistema Existente
+
+#### Extensão da Lista de Agendamentos do Médico
+```typescript
+// src/app/(doctor)/doctor/appointments/_components/appointments-list.tsx
+// Adicionar coluna "Atendimento" na tabela existente
+<TableCell>
+  {appointment.hasMedicalVisit ? (
+    <Badge variant="outline" className="text-green-600">
+      Atendido
+    </Badge>
+  ) : (
+    <Badge variant="secondary">
+      Pendente
+    </Badge>
+  )}
+</TableCell>
+```
+
+#### Badge de Notificação na Sidebar
+```typescript
+// src/app/(doctor)/_components/doctor-sidebar.tsx
+// Adicionar contador de atendimentos pendentes
+const { data: pendingVisits } = useQuery({
+  queryKey: ["pending-medical-visits"],
+  queryFn: () => getPendingMedicalVisits(),
+});
+```
+
+### 6. Testes e Validação
+
+#### Testes de Integração
+- Verificar se médicos podem criar atendimentos
+- Validar permissões de acesso
+- Testar integração com agendamentos existentes
+- Verificar revalidação de cache
+
+#### Testes de Interface
+- Testar formulário de atendimento
+- Validar navegação entre páginas
+- Verificar responsividade
+- Testar modo escuro/claro
+
+## Critérios de Conclusão
+
+### Funcionalidades Implementadas
+- Tabela medical_visits criada e migrada
+- Extensão da tabela appointments
+- Server Actions para CRUD de atendimentos
+- Interface de lista de prontuários
+- Formulário de atendimento médico
+- Integração com sidebar do médico
+- Validações e permissões
+- Badges de notificação
+
+### Integração com Sistema Existente
+- Menu "Prontuários" na sidebar
+- Extensão da lista de agendamentos
+- Revalidação de cache
+- Manutenção de funcionalidades existentes
+
+### Qualidade e Performance
+- Validação com Zod
+- Tratamento de erros
+- Loading states
+- Feedback visual
+- Responsividade
+
+## Resultado da Fase 1
+Ao final desta fase, os médicos poderão:
+- Visualizar lista de prontuários pendentes
+- Criar atendimentos médicos completos
+- Registrar queixa, exame, diagnóstico e tratamento
+- Acessar histórico de atendimentos
+- Navegar entre agendamentos e prontuários
+
+O sistema mantém 100% da funcionalidade existente e adiciona capacidades médicas básicas de forma integrada e intuitiva.
+

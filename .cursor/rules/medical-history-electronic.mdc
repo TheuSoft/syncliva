@@ -1,0 +1,165 @@
+---
+alwaysApply: true
+---
+
+# Plano de Extensão SyncLiva - Histórico Médico e Prontuário Eletrônico
+
+## Visão Geral
+Esta regra define o plano completo de implementação do sistema de Histórico Médico e Prontuário Eletrônico no SyncLiva, mantendo 100% da funcionalidade existente e adicionando capacidades médicas avançadas.
+
+## Estado Atual do Sistema
+
+### Funcionalidades Existentes
+- Sistema multi-tenant com 3 perfis (admin, doctor, receptionist)
+- Gestão completa de agendamentos
+- Cadastro de pacientes, médicos e clínicas
+- Dashboard com métricas e relatórios
+- Autenticação segura e controle de acesso
+- Interface responsiva com modo escuro/claro
+
+### Stack Técnica Atual
+- Next.js 15, React 19, TypeScript
+- PostgreSQL com Drizzle ORM
+- shadcn/ui + Tailwind CSS
+- better-auth para autenticação
+- jsPDF para relatórios
+
+## Estratégia de Implementação
+
+### Abordagem: Extensão Incremental
+- Manter 100% da funcionalidade existente
+- Adicionar novas funcionalidades como extensão natural
+- Aproveitar componentes, padrões e infraestrutura atual
+- Implementação em fases independentes e testáveis
+
+## Fases de Implementação
+
+### FASE 1: Atendimento Médico Básico
+**Duração**: Semana 1-2
+**Objetivo**: Criar funcionalidade básica de atendimento médico
+**Regra específica**: `medical-history-phase1.mdc`
+
+### FASE 2: Sistema de Prescrições
+**Duração**: Semana 3
+**Objetivo**: Implementar prescrição de medicamentos
+**Regra específica**: `medical-history-phase2.mdc`
+
+### FASE 3: Anamnese Estruturada
+**Duração**: Semana 4-5
+**Objetivo**: Sistema completo de anamnese do paciente
+**Regra específica**: `medical-history-phase3.mdc`
+
+### FASE 4: Gestão de Documentos
+**Duração**: Semana 6-7
+**Objetivo**: Upload, organização e visualização de documentos médicos
+**Regra específica**: `medical-history-phase4.mdc`
+
+### FASE 5: Evolução Clínica e Timeline
+**Duração**: Semana 8-9
+**Objetivo**: Visualização da evolução do paciente ao longo do tempo
+**Regra específica**: `medical-history-phase5.mdc`
+
+### FASE 6: Especialidades Customizáveis
+**Duração**: Semana 10-11
+**Objetivo**: Adaptar sistema para diferentes especialidades médicas
+**Regra específica**: `medical-history-phase6.mdc`
+
+## Estrutura de Navegação
+
+### Nova Seção no Dashboard Médico
+- Menu "Prontuários" na sidebar existente
+- Integração com sistema de navegação atual
+- Badges de notificação para atendimentos pendentes
+
+### Fluxo de Navegação
+1. Lista de Pacientes → Selecionar paciente
+2. Prontuário do Paciente → Interface com 5 abas:
+   - Atendimento Atual
+   - Anamnese
+   - Documentos
+   - Evolução Clínica
+   - Medicações
+
+## Pontos de Integração
+
+### Com Sistema Existente
+- **Agendamentos**: medical_visits conectado a appointments
+- **Dashboard**: Métricas médicas nos dashboards existentes
+- **Relatórios**: Relatórios médicos usando jsPDF existente
+- **Autenticação**: Permissões usando better-auth atual
+- **UI/UX**: Componentes shadcn/ui para consistência
+
+### Com Funcionalidades Atuais
+- **Gestão de Pacientes**: Extensão natural do cadastro atual
+- **Sistema de Usuários**: Médicos ganham acesso aos prontuários
+- **Relatórios**: Extensão dos relatórios existentes
+- **Dashboard**: Novas métricas integradas aos dashboards
+
+## Impacto por Perfil de Usuário
+
+### Médicos (doctors)
+- **Ganham**: Interface completa de prontuário eletrônico
+- **Mantém**: Todas funcionalidades atuais de agenda e consultas
+- **Novo menu**: "Prontuários" na navegação
+
+### Administradores (admin)
+- **Ganham**: Relatórios médicos e métricas clínicas
+- **Mantém**: Controle total sobre sistema e usuários
+- **Visibilidade**: Dados agregados de atendimentos
+
+### Recepcionistas (receptionist)
+- **Mantém**: Todas funcionalidades atuais inalteradas
+- **Ganham**: Acesso a documentos (se configurado)
+- **Zero impacto**: Nenhuma alteração no fluxo atual
+
+## Benefícios da Abordagem
+
+### Técnicos
+- **Zero retrabalho**: Aproveita 100% da infraestrutura atual
+- **Consistência**: Mantém padrões estabelecidos
+- **Escalabilidade**: Extensão natural do sistema
+- **Manutenibilidade**: Segue arquitetura validada
+
+### Funcionais
+- **Integração total**: Prontuário conectado aos agendamentos
+- **Experiência consistente**: Mesma interface para tudo
+- **Dados centralizados**: Histórico completo do paciente
+- **Flexibilidade**: Adaptável para qualquer especialidade
+
+## Considerações Importantes
+
+### Dados Existentes
+- Todos os agendamentos, pacientes e médicos atuais permanecem intactos
+- Migração incremental sem perda de dados
+- Compatibilidade total com funcionalidades existentes
+
+### Performance
+- Uso de índices otimizados nas novas tabelas
+- Lazy loading para documentos pesados
+- Cache de dados frequentemente acessados
+
+### Segurança
+- Aproveitamento do sistema de auth existente
+- Controle granular de permissões por funcionalidade
+- Conformidade com LGPD para dados médicos
+
+## Resultado Final
+Ao final das 6 fases, o SyncLiva terá:
+- Sistema completo de prontuário eletrônico
+- Interface unificada mantendo consistência atual
+- Integração total com funcionalidades existentes
+- Flexibilidade para qualquer especialidade médica
+- Zero impacto nas funcionalidades atuais
+- Extensibilidade para futuras funcionalidades
+
+O sistema continuará sendo o SyncLiva que os usuários conhecem, mas com capacidades médicas completas integradas de forma natural e intuitiva.
+
+## Regras Específicas por Fase
+Para detalhes técnicos específicos de cada fase, consulte:
+- `medical-history-phase1.mdc` - Atendimento Médico Básico
+- `medical-history-phase2.mdc` - Sistema de Prescrições
+- `medical-history-phase3.mdc` - Anamnese Estruturada
+- `medical-history-phase4.mdc` - Gestão de Documentos
+- `medical-history-phase5.mdc` - Evolução Clínica e Timeline
+- `medical-history-phase6.mdc` - Especialidades Customizáveis
+
