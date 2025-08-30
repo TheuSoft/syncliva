@@ -56,6 +56,11 @@ const items = [
     icon: UsersRound,
   },
   {
+    title: "Usuários",
+    url: "/users",
+    icon: User,
+  },
+  {
     title: "Relatórios",
     url: "/reports",
     icon: FileText,

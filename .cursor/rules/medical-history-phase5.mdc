@@ -1,0 +1,720 @@
+# FASE 5: Evolução Clínica e Timeline
+
+## Objetivo
+Visualização da evolução do paciente ao longo do tempo com timeline automática e gráficos de evolução.
+
+## Duração
+**Semana 8-9**
+
+## Atividades Principais
+
+### 1. Extensões no Banco de Dados
+
+#### Nova Tabela: clinical_evolution
+```sql
+CREATE TABLE "clinical_evolution" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  "patient_id" uuid NOT NULL REFERENCES "patients"("id") ON DELETE CASCADE,
+  "recorded_by" uuid NOT NULL REFERENCES "users"("id"),
+  "evolution_date" timestamp NOT NULL,
+  "evolution_type" evolution_type_enum NOT NULL,
+  "title" text NOT NULL,
+  "description" text,
+  "vital_signs" jsonb,
+  "measurements" jsonb,
+  "clinical_notes" text,
+  "images" text[],
+  "tags" text[] DEFAULT '{}',
+  "is_milestone" boolean DEFAULT false,
+  "created_at" timestamp DEFAULT now() NOT NULL,
+  "updated_at" timestamp DEFAULT now() NOT NULL
+);
+```
+
+#### Novo Enum: evolution_type_enum
+```sql
+CREATE TYPE "evolution_type" AS ENUM(
+  'consultation',
+  'examination',
+  'procedure',
+  'medication_change',
+  'milestone',
+  'observation'
+);
+```
+
+#### Nova Tabela: patient_milestones
+```sql
+CREATE TABLE "patient_milestones" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  "patient_id" uuid NOT NULL REFERENCES "patients"("id") ON DELETE CASCADE,
+  "milestone_type" milestone_type_enum NOT NULL,
+  "title" text NOT NULL,
+  "description" text,
+  "date" timestamp NOT NULL,
+  "created_by" uuid NOT NULL REFERENCES "users"("id"),
+  "created_at" timestamp DEFAULT now() NOT NULL
+);
+```
+
+#### Novo Enum: milestone_type_enum
+```sql
+CREATE TYPE "milestone_type" AS ENUM(
+  'diagnosis',
+  'treatment_start',
+  'treatment_completion',
+  'surgery',
+  'recovery',
+  'discharge',
+  'follow_up'
+);
+```
+
+### 2. Schema Drizzle
+
+#### Arquivo: src/db/schema.ts
+```typescript
+export const evolutionTypeEnum = pgEnum("evolution_type", [
+  "consultation",
+  "examination", 
+  "procedure",
+  "medication_change",
+  "milestone",
+  "observation"
+]);
+
+export const milestoneTypeEnum = pgEnum("milestone_type", [
+  "diagnosis",
+  "treatment_start",
+  "treatment_completion",
+  "surgery",
+  "recovery",
+  "discharge",
+  "follow_up"
+]);
+
+export const clinicalEvolutionTable = pgTable("clinical_evolution", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  patientId: uuid("patient_id")
+    .notNull()
+    .references(() => patientsTable.id, { onDelete: "cascade" }),
+  recordedBy: uuid("recorded_by")
+    .notNull()
+    .references(() => usersTable.id),
+  evolutionDate: timestamp("evolution_date").notNull(),
+  evolutionType: evolutionTypeEnum("evolution_type").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  vitalSigns: jsonb("vital_signs"),
+  measurements: jsonb("measurements"),
+  clinicalNotes: text("clinical_notes"),
+  images: text("images").array(),
+  tags: text("tags").array().default([]),
+  isMilestone: boolean("is_milestone").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+export const patientMilestonesTable = pgTable("patient_milestones", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  patientId: uuid("patient_id")
+    .notNull()
+    .references(() => patientsTable.id, { onDelete: "cascade" }),
+  milestoneType: milestoneTypeEnum("milestone_type").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  date: timestamp("date").notNull(),
+  createdBy: uuid("created_by")
+    .notNull()
+    .references(() => usersTable.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const clinicalEvolutionTableRelations = relations(clinicalEvolutionTable, ({ one }) => ({
+  patient: one(patientsTable, {
+    fields: [clinicalEvolutionTable.patientId],
+    references: [patientsTable.id],
+  }),
+  recordedBy: one(usersTable, {
+    fields: [clinicalEvolutionTable.recordedBy],
+    references: [usersTable.id],
+  }),
+}));
+```
+
+### 3. Server Actions
+
+#### Arquivo: src/actions/add-clinical-evolution/index.ts
+```typescript
+"use server";
+
+import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+
+import { db } from "@/db";
+import { clinicalEvolutionTable } from "@/db/schema";
+import { auth } from "@/lib/auth";
+import { actionClient } from "@/lib/next-safe-action";
+
+import { addClinicalEvolutionSchema } from "./schema";
+
+export const addClinicalEvolution = actionClient
+  .schema(addClinicalEvolutionSchema)
+  .action(async ({ parsedInput }) => {
+    try {
+      const session = await auth.api.getSession({
+        headers: await headers(),
+      });
+
+      if (!session?.user) {
+        throw new Error("Unauthorized");
+      }
+
+      if (session.user.role !== "doctor") {
+        throw new Error("Apenas médicos podem registrar evolução clínica");
+      }
+
+      const { patientId, evolutionDate, evolutionType, title, description, vitalSigns, measurements, clinicalNotes, images, tags, isMilestone } = parsedInput;
+
+      // Verificar se o paciente existe
+      const patient = await db
+        .select({ id: patientsTable.id })
+        .from(patientsTable)
+        .where(eq(patientsTable.id, patientId))
+        .limit(1);
+
+      if (patient.length === 0) {
+        return {
+          success: false,
+          error: "Paciente não encontrado",
+        };
+      }
+
+      // Criar registro de evolução
+      const [evolution] = await db
+        .insert(clinicalEvolutionTable)
+        .values({
+          patientId,
+          recordedBy: session.user.id,
+          evolutionDate: new Date(evolutionDate),
+          evolutionType,
+          title,
+          description,
+          vitalSigns,
+          measurements,
+          clinicalNotes,
+          images: images || [],
+          tags: tags || [],
+          isMilestone,
+        })
+        .returning();
+
+      revalidatePath(`/doctor/patients/${patientId}`);
+
+      return {
+        success: true,
+        data: evolution,
+        message: "Evolução clínica registrada com sucesso!",
+      };
+
+    } catch (error) {
+      console.error("Erro ao registrar evolução clínica:", error);
+      throw new Error(error instanceof Error ? error.message : "Erro interno do servidor");
+    }
+  });
+```
+
+#### Arquivo: src/actions/add-clinical-evolution/schema.ts
+```typescript
+import { z } from "zod";
+
+export const addClinicalEvolutionSchema = z.object({
+  patientId: z.string().uuid("ID do paciente inválido"),
+  evolutionDate: z.string().datetime("Data inválida"),
+  evolutionType: z.enum(["consultation", "examination", "procedure", "medication_change", "milestone", "observation"]),
+  title: z.string().min(1, "Título é obrigatório"),
+  description: z.string().optional(),
+  vitalSigns: z.record(z.any()).optional(),
+  measurements: z.record(z.any()).optional(),
+  clinicalNotes: z.string().optional(),
+  images: z.array(z.string()).default([]),
+  tags: z.array(z.string()).default([]),
+  isMilestone: z.boolean().default(false),
+});
+
+export type AddClinicalEvolutionSchema = z.infer<typeof addClinicalEvolutionSchema>;
+```
+
+### 4. Interface do Usuário
+
+#### Componente de Timeline Clínica
+```typescript
+// src/app/(doctor)/doctor/patients/[patientId]/_components/clinical-timeline.tsx
+export default function ClinicalTimeline({ patientId }: { patientId: string }) {
+  const { data: evolution, isLoading } = useQuery({
+    queryKey: ["clinical-evolution", patientId],
+    queryFn: () => getClinicalEvolution(patientId),
+  });
+
+  const [selectedType, setSelectedType] = useState<string>("all");
+  const [showMilestones, setShowMilestones] = useState(true);
+
+  const filteredEvolution = evolution?.filter(item => {
+    const matchesType = selectedType === "all" || item.evolutionType === selectedType;
+    const matchesMilestone = showMilestones || !item.isMilestone;
+    return matchesType && matchesMilestone;
+  });
+
+  const evolutionTypes = [...new Set(evolution?.map(item => item.evolutionType) || [])];
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Evolução Clínica</CardTitle>
+            <CardDescription>
+              Timeline da evolução clínica do paciente
+            </CardDescription>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowAddEvolution(true)}
+          >
+            Adicionar Evolução
+          </Button>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Select value={selectedType} onValueChange={setSelectedType}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="Tipo de evolução" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os tipos</SelectItem>
+              {evolutionTypes.map(type => (
+                <SelectItem key={type} value={type}>
+                  {getEvolutionTypeLabel(type)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="show-milestones"
+              checked={showMilestones}
+              onCheckedChange={setShowMilestones}
+            />
+            <Label htmlFor="show-milestones">Mostrar marcos</Label>
+          </div>
+        </div>
+      </CardHeader>
+      
+      <CardContent>
+        {isLoading ? (
+          <div className="text-center py-8">
+            <p>Carregando evolução clínica...</p>
+          </div>
+        ) : filteredEvolution && filteredEvolution.length > 0 ? (
+          <div className="space-y-6">
+            {filteredEvolution.map((item) => (
+              <TimelineItem key={item.id} item={item} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            <Timeline className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>Nenhuma evolução clínica registrada</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function getEvolutionTypeLabel(type: string): string {
+  const labels = {
+    consultation: "Consulta",
+    examination: "Exame",
+    procedure: "Procedimento",
+    medication_change: "Mudança de Medicação",
+    milestone: "Marco",
+    observation: "Observação"
+  };
+  return labels[type as keyof typeof labels] || type;
+}
+```
+
+#### Componente de Item da Timeline
+```typescript
+// src/app/(doctor)/doctor/patients/[patientId]/_components/timeline-item.tsx
+interface TimelineItemProps {
+  item: {
+    id: string;
+    evolutionDate: string;
+    evolutionType: string;
+    title: string;
+    description?: string;
+    vitalSigns?: Record<string, any>;
+    measurements?: Record<string, any>;
+    clinicalNotes?: string;
+    images?: string[];
+    tags: string[];
+    isMilestone: boolean;
+    recordedBy: {
+      name: string;
+    };
+  };
+}
+
+export default function TimelineItem({ item }: TimelineItemProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const getEvolutionIcon = (type: string) => {
+    switch (type) {
+      case "consultation":
+        return <Stethoscope className="h-5 w-5" />;
+      case "examination":
+        return <Scan className="h-5 w-5" />;
+      case "procedure":
+        return <Syringe className="h-5 w-5" />;
+      case "medication_change":
+        return <Pills className="h-5 w-5" />;
+      case "milestone":
+        return <Flag className="h-5 w-5" />;
+      case "observation":
+        return <Eye className="h-5 w-5" />;
+      default:
+        return <Circle className="h-5 w-5" />;
+    }
+  };
+
+  const getEvolutionColor = (type: string) => {
+    switch (type) {
+      case "consultation":
+        return "text-blue-600 bg-blue-100";
+      case "examination":
+        return "text-green-600 bg-green-100";
+      case "procedure":
+        return "text-purple-600 bg-purple-100";
+      case "medication_change":
+        return "text-orange-600 bg-orange-100";
+      case "milestone":
+        return "text-red-600 bg-red-100";
+      case "observation":
+        return "text-gray-600 bg-gray-100";
+      default:
+        return "text-gray-600 bg-gray-100";
+    }
+  };
+
+  return (
+    <div className="flex space-x-4">
+      <div className="flex flex-col items-center">
+        <div className={`p-2 rounded-full ${getEvolutionColor(item.evolutionType)}`}>
+          {getEvolutionIcon(item.evolutionType)}
+        </div>
+        {item.isMilestone && (
+          <div className="w-0.5 h-8 bg-red-300 mt-2"></div>
+        )}
+      </div>
+      
+      <div className="flex-1 space-y-2">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <h4 className="font-semibold">{item.title}</h4>
+            <p className="text-sm text-muted-foreground">
+              {new Date(item.evolutionDate).toLocaleDateString()} - {item.recordedBy.name}
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsExpanded(!isExpanded)}
+          >
+            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </Button>
+        </div>
+        
+        {item.description && (
+          <p className="text-sm text-muted-foreground">
+            {item.description}
+          </p>
+        )}
+        
+        {isExpanded && (
+          <div className="space-y-4 pt-4 border-t">
+            {item.vitalSigns && Object.keys(item.vitalSigns).length > 0 && (
+              <div>
+                <h5 className="font-medium text-sm mb-2">Sinais Vitais</h5>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {Object.entries(item.vitalSigns).map(([key, value]) => (
+                    <div key={key} className="text-sm">
+                      <span className="font-medium">{key}:</span> {value}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {item.measurements && Object.keys(item.measurements).length > 0 && (
+              <div>
+                <h5 className="font-medium text-sm mb-2">Medidas</h5>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {Object.entries(item.measurements).map(([key, value]) => (
+                    <div key={key} className="text-sm">
+                      <span className="font-medium">{key}:</span> {value}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {item.clinicalNotes && (
+              <div>
+                <h5 className="font-medium text-sm mb-2">Notas Clínicas</h5>
+                <p className="text-sm text-muted-foreground">
+                  {item.clinicalNotes}
+                </p>
+              </div>
+            )}
+            
+            {item.images && item.images.length > 0 && (
+              <div>
+                <h5 className="font-medium text-sm mb-2">Imagens</h5>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {item.images.map((image, index) => (
+                    <img
+                      key={index}
+                      src={image}
+                      alt={`Imagem ${index + 1}`}
+                      className="w-full h-20 object-cover rounded"
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {item.tags.length > 0 && (
+              <div>
+                <h5 className="font-medium text-sm mb-2">Tags</h5>
+                <div className="flex flex-wrap gap-1">
+                  {item.tags.map((tag, index) => (
+                    <Badge key={index} variant="outline" className="text-xs">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+#### Componente de Gráficos de Evolução
+```typescript
+// src/app/(doctor)/doctor/patients/[patientId]/_components/evolution-charts.tsx
+export default function EvolutionCharts({ patientId }: { patientId: string }) {
+  const { data: evolution } = useQuery({
+    queryKey: ["clinical-evolution", patientId],
+    queryFn: () => getClinicalEvolution(patientId),
+  });
+
+  const vitalSignsData = evolution
+    ?.filter(item => item.vitalSigns && Object.keys(item.vitalSigns).length > 0)
+    .map(item => ({
+      date: new Date(item.evolutionDate),
+      ...item.vitalSigns,
+    }))
+    .sort((a, b) => a.date.getTime() - b.date.getTime()) || [];
+
+  const measurementsData = evolution
+    ?.filter(item => item.measurements && Object.keys(item.measurements).length > 0)
+    .map(item => ({
+      date: new Date(item.evolutionDate),
+      ...item.measurements,
+    }))
+    .sort((a, b) => a.date.getTime() - b.date.getTime()) || [];
+
+  return (
+    <div className="space-y-6">
+      {vitalSignsData.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Evolução dos Sinais Vitais</CardTitle>
+            <CardDescription>
+              Gráfico temporal dos sinais vitais registrados
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <VitalSignsChart data={vitalSignsData} />
+          </CardContent>
+        </Card>
+      )}
+      
+      {measurementsData.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Evolução das Medidas</CardTitle>
+            <CardDescription>
+              Gráfico temporal das medidas clínicas
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <MeasurementsChart data={measurementsData} />
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function VitalSignsChart({ data }: { data: Array<{ date: Date; [key: string]: any }> }) {
+  const chartData = data.map(item => ({
+    date: item.date.toLocaleDateString(),
+    ...Object.fromEntries(
+      Object.entries(item).filter(([key]) => key !== 'date')
+    ),
+  }));
+
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <LineChart data={chartData}>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="date" />
+        <YAxis />
+        <Tooltip />
+        <Legend />
+        {Object.keys(chartData[0] || {}).filter(key => key !== 'date').map((key, index) => (
+          <Line
+            key={key}
+            type="monotone"
+            dataKey={key}
+            stroke={getChartColor(index)}
+            strokeWidth={2}
+            dot={{ r: 4 }}
+          />
+        ))}
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
+function MeasurementsChart({ data }: { data: Array<{ date: Date; [key: string]: any }> }) {
+  const chartData = data.map(item => ({
+    date: item.date.toLocaleDateString(),
+    ...Object.fromEntries(
+      Object.entries(item).filter(([key]) => key !== 'date')
+    ),
+  }));
+
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <BarChart data={chartData}>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="date" />
+        <YAxis />
+        <Tooltip />
+        <Legend />
+        {Object.keys(chartData[0] || {}).filter(key => key !== 'date').map((key, index) => (
+          <Bar
+            key={key}
+            dataKey={key}
+            fill={getChartColor(index)}
+          />
+        ))}
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+function getChartColor(index: number): string {
+  const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#ff0000'];
+  return colors[index % colors.length];
+}
+```
+
+### 5. Integração com Sistema Existente
+
+#### Extensão da Página do Paciente
+```typescript
+// src/app/(doctor)/doctor/patients/[patientId]/page.tsx
+// Adicionar aba de evolução clínica
+<Tabs defaultValue="info" className="w-full">
+  <TabsList>
+    <TabsTrigger value="info">Informações</TabsTrigger>
+    <TabsTrigger value="anamnesis">Anamnese</TabsTrigger>
+    <TabsTrigger value="documents">Documentos</TabsTrigger>
+    <TabsTrigger value="evolution">Evolução Clínica</TabsTrigger>
+    <TabsTrigger value="appointments">Consultas</TabsTrigger>
+  </TabsList>
+  
+  <TabsContent value="evolution">
+    <div className="space-y-6">
+      <ClinicalTimeline patientId={patientId} />
+      <EvolutionCharts patientId={patientId} />
+    </div>
+  </TabsContent>
+</Tabs>
+```
+
+### 6. Testes e Validação
+
+#### Testes de Funcionalidade
+- Verificar registro de evolução clínica
+- Testar filtros da timeline
+- Validar gráficos de evolução
+- Testar marcos importantes
+
+#### Testes de Interface
+- Testar timeline responsiva
+- Validar expansão de itens
+- Testar gráficos interativos
+- Verificar navegação temporal
+
+## Critérios de Conclusão
+
+### Funcionalidades Implementadas
+- Tabela clinical_evolution criada e migrada
+- Tabela patient_milestones para marcos
+- Timeline clínica interativa
+- Gráficos de evolução temporal
+- Filtros por tipo de evolução
+- Sistema de marcos importantes
+- Visualização de sinais vitais
+
+### Integração com Sistema Existente
+- Nova aba na página do paciente
+- Integração com dados existentes
+- Revalidação de cache
+- Consistência de interface
+
+### Visualização e Análise
+- Timeline cronológica
+- Gráficos de evolução
+- Filtros avançados
+- Marcos importantes
+
+## Resultado da Fase 5
+Ao final desta fase, os médicos poderão:
+- Registrar evolução clínica detalhada
+- Visualizar timeline cronológica
+- Analisar gráficos de evolução
+- Identificar marcos importantes
+- Acompanhar sinais vitais
+- Comparar medidas ao longo do tempo
+
+O sistema agora possui visualização completa da evolução clínica do paciente com análise temporal avançada.
+description:
+globs:
+alwaysApply: true
+---

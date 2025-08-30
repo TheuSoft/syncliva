@@ -33,10 +33,19 @@ export async function POST(request: NextRequest) {
     if (!isValidRole) {
       let errorMessage = "";
       
-      if (expectedRole === "clinic_admin" && user.role === "doctor") {
+      // ✅ ATUALIZADO: Mensagens específicas para cada role
+      if (expectedRole === "admin" && user.role === "doctor") {
         errorMessage = "Este email está cadastrado como médico. Use a aba 'Médico' para fazer login.";
-      } else if (expectedRole === "doctor" && user.role === "clinic_admin") {
+      } else if (expectedRole === "admin" && user.role === "receptionist") {
+        errorMessage = "Este email está cadastrado como recepcionista. Use a aba 'Recepcionista' para fazer login.";
+      } else if (expectedRole === "doctor" && user.role === "admin") {
         errorMessage = "Este email está cadastrado como administrador. Use a aba 'Administrador' para fazer login.";
+      } else if (expectedRole === "doctor" && user.role === "receptionist") {
+        errorMessage = "Este email está cadastrado como recepcionista. Use a aba 'Recepcionista' para fazer login.";
+      } else if (expectedRole === "receptionist" && user.role === "admin") {
+        errorMessage = "Este email está cadastrado como administrador. Use a aba 'Administrador' para fazer login.";
+      } else if (expectedRole === "receptionist" && user.role === "doctor") {
+        errorMessage = "Este email está cadastrado como médico. Use a aba 'Médico' para fazer login.";
       } else {
         errorMessage = "Tipo de usuário não autorizado para este login.";
       }

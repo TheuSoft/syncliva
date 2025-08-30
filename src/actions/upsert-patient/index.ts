@@ -57,6 +57,7 @@ export const upsertPatient = actionClient
       });
 
     revalidatePath("/patients");
+    revalidatePath("/receptionist/patients");
     
     return {
       success: true

@@ -30,10 +30,10 @@ export const createAdminAccount = actionClient
 
       console.log("✅ Usuário criado:", authResult.user?.email);
 
-      // 1.1. Garantir que o role seja 'clinic_admin'
+      // 1.1. Garantir que o role seja 'admin'
       await db
         .update(usersTable)
-        .set({ role: "clinic_admin" })
+        .set({ role: "admin" })
         .where(eq(usersTable.id, authResult.user!.id));
 
       console.log("✅ Role de administrador definido");

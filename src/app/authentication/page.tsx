@@ -8,6 +8,7 @@ import { auth } from "@/lib/auth";
 
 import DoctorLoginForm from "./components/doctor-login-form";
 import LoginForm from "./components/login-form";
+import ReceptionistLoginForm from "./components/receptionist-login-form";
 
 const AuthenticationPage = async () => {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -15,6 +16,8 @@ const AuthenticationPage = async () => {
     // Redirecionar baseado no role do usuário
     if (session.user.role === "doctor") {
       redirect("/doctor/dashboard");
+    } else if (session.user.role === "receptionist") {
+      redirect("/receptionist/dashboard");
     } else {
       redirect("/dashboard");
     }
@@ -46,7 +49,7 @@ const AuthenticationPage = async () => {
           {/* Card de Login */}
           <div className="rounded-2xl border border-gray-200/50 bg-white/80 p-6 shadow-xl backdrop-blur-sm dark:border-gray-700/50 dark:bg-gray-800/80">
             <Tabs defaultValue="Admin" className="w-full">
-              <TabsList className="mb-6 grid w-full grid-cols-2 bg-gray-100/80 dark:bg-gray-700/50">
+              <TabsList className="mb-6 grid w-full grid-cols-3 bg-gray-100/80 dark:bg-gray-700/50">
                 <TabsTrigger
                   value="Admin"
                   className="transition-all duration-200 data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-gray-600"
@@ -54,6 +57,15 @@ const AuthenticationPage = async () => {
                   <div className="flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-blue-500"></div>
                     Administrador
+                  </div>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="Receptionist"
+                  className="transition-all duration-200 data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-gray-600"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-orange-500"></div>
+                    Recepcionista
                   </div>
                 </TabsTrigger>
                 <TabsTrigger
@@ -69,6 +81,10 @@ const AuthenticationPage = async () => {
 
               <TabsContent value="Admin" className="mt-0">
                 <LoginForm />
+              </TabsContent>
+
+              <TabsContent value="Receptionist" className="mt-0">
+                <ReceptionistLoginForm />
               </TabsContent>
 
               <TabsContent value="Doctor" className="mt-0">

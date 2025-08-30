@@ -1,0 +1,819 @@
+# FASE 6: Especialidades Customizáveis
+
+## Objetivo
+Adaptar sistema para diferentes especialidades médicas com campos dinâmicos e templates específicos.
+
+## Duração
+**Semana 10-11**
+
+## Atividades Principais
+
+### 1. Extensões no Banco de Dados
+
+#### Nova Tabela: specialty_configurations
+```sql
+CREATE TABLE "specialty_configurations" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  "clinic_id" uuid NOT NULL REFERENCES "clinics"("id") ON DELETE CASCADE,
+  "specialty_name" text NOT NULL,
+  "specialty_code" text NOT NULL UNIQUE,
+  "display_name" text NOT NULL,
+  "description" text,
+  "field_configurations" jsonb NOT NULL,
+  "template_configurations" jsonb NOT NULL,
+  "validation_rules" jsonb,
+  "is_active" boolean DEFAULT true NOT NULL,
+  "created_at" timestamp DEFAULT now() NOT NULL,
+  "updated_at" timestamp DEFAULT now() NOT NULL
+);
+```
+
+#### Nova Tabela: specialty_fields
+```sql
+CREATE TABLE "specialty_fields" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  "specialty_id" uuid NOT NULL REFERENCES "specialty_configurations"("id") ON DELETE CASCADE,
+  "field_name" text NOT NULL,
+  "field_type" field_type_enum NOT NULL,
+  "display_label" text NOT NULL,
+  "is_required" boolean DEFAULT false NOT NULL,
+  "default_value" text,
+  "validation_rules" jsonb,
+  "options" text[],
+  "order_index" integer NOT NULL,
+  "is_active" boolean DEFAULT true NOT NULL,
+  "created_at" timestamp DEFAULT now() NOT NULL
+);
+```
+
+#### Novo Enum: field_type_enum
+```sql
+CREATE TYPE "field_type" AS ENUM(
+  'text',
+  'textarea',
+  'number',
+  'select',
+  'multiselect',
+  'date',
+  'datetime',
+  'boolean',
+  'file',
+  'signature'
+);
+```
+
+#### Extensão da Tabela doctors
+```sql
+ALTER TABLE "doctors" ADD COLUMN "specialty_id" uuid REFERENCES "specialty_configurations"("id");
+ALTER TABLE "doctors" ADD COLUMN "specialty_fields_data" jsonb;
+```
+
+### 2. Schema Drizzle
+
+#### Arquivo: src/db/schema.ts
+```typescript
+export const fieldTypeEnum = pgEnum("field_type", [
+  "text",
+  "textarea", 
+  "number",
+  "select",
+  "multiselect",
+  "date",
+  "datetime",
+  "boolean",
+  "file",
+  "signature"
+]);
+
+export const specialtyConfigurationsTable = pgTable("specialty_configurations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  clinicId: uuid("clinic_id")
+    .notNull()
+    .references(() => clinicsTable.id, { onDelete: "cascade" }),
+  specialtyName: text("specialty_name").notNull(),
+  specialtyCode: text("specialty_code").notNull().unique(),
+  displayName: text("display_name").notNull(),
+  description: text("description"),
+  fieldConfigurations: jsonb("field_configurations").notNull(),
+  templateConfigurations: jsonb("template_configurations").notNull(),
+  validationRules: jsonb("validation_rules"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+export const specialtyFieldsTable = pgTable("specialty_fields", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  specialtyId: uuid("specialty_id")
+    .notNull()
+    .references(() => specialtyConfigurationsTable.id, { onDelete: "cascade" }),
+  fieldName: text("field_name").notNull(),
+  fieldType: fieldTypeEnum("field_type").notNull(),
+  displayLabel: text("display_label").notNull(),
+  isRequired: boolean("is_required").default(false).notNull(),
+  defaultValue: text("default_value"),
+  validationRules: jsonb("validation_rules"),
+  options: text("options").array(),
+  orderIndex: integer("order_index").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Extensão da doctorsTable
+export const doctorsTable = pgTable("doctors", {
+  // ... campos existentes ...
+  specialtyId: uuid("specialty_id").references(() => specialtyConfigurationsTable.id),
+  specialtyFieldsData: jsonb("specialty_fields_data"),
+});
+
+export const specialtyConfigurationsTableRelations = relations(specialtyConfigurationsTable, ({ one, many }) => ({
+  clinic: one(clinicsTable, {
+    fields: [specialtyConfigurationsTable.clinicId],
+    references: [clinicsTable.id],
+  }),
+  fields: many(specialtyFieldsTable),
+  doctors: many(doctorsTable),
+}));
+```
+
+### 3. Server Actions
+
+#### Arquivo: src/actions/create-specialty/index.ts
+```typescript
+"use server";
+
+import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+
+import { db } from "@/db";
+import { specialtyConfigurationsTable, specialtyFieldsTable } from "@/db/schema";
+import { auth } from "@/lib/auth";
+import { actionClient } from "@/lib/next-safe-action";
+
+import { createSpecialtySchema } from "./schema";
+
+export const createSpecialty = actionClient
+  .schema(createSpecialtySchema)
+  .action(async ({ parsedInput }) => {
+    try {
+      const session = await auth.api.getSession({
+        headers: await headers(),
+      });
+
+      if (!session?.user) {
+        throw new Error("Unauthorized");
+      }
+
+      if (session.user.role !== "admin") {
+        throw new Error("Apenas administradores podem criar especialidades");
+      }
+
+      const { clinicId, specialtyName, specialtyCode, displayName, description, fields, templates, validationRules } = parsedInput;
+
+      // Verificar se o código da especialidade já existe
+      const existingSpecialty = await db
+        .select({ id: specialtyConfigurationsTable.id })
+        .from(specialtyConfigurationsTable)
+        .where(eq(specialtyConfigurationsTable.specialtyCode, specialtyCode))
+        .limit(1);
+
+      if (existingSpecialty.length > 0) {
+        return {
+          success: false,
+          error: "Código de especialidade já existe",
+        };
+      }
+
+      // Criar especialidade
+      const [specialty] = await db
+        .insert(specialtyConfigurationsTable)
+        .values({
+          clinicId,
+          specialtyName,
+          specialtyCode,
+          displayName,
+          description,
+          fieldConfigurations: fields,
+          templateConfigurations: templates,
+          validationRules,
+        })
+        .returning();
+
+      // Criar campos da especialidade
+      if (fields && Array.isArray(fields)) {
+        const specialtyFields = fields.map((field, index) => ({
+          specialtyId: specialty.id,
+          fieldName: field.name,
+          fieldType: field.type,
+          displayLabel: field.label,
+          isRequired: field.required || false,
+          defaultValue: field.defaultValue,
+          validationRules: field.validation,
+          options: field.options,
+          orderIndex: index,
+        }));
+
+        await db.insert(specialtyFieldsTable).values(specialtyFields);
+      }
+
+      revalidatePath("/admin/specialties");
+
+      return {
+        success: true,
+        data: specialty,
+        message: "Especialidade criada com sucesso!",
+      };
+
+    } catch (error) {
+      console.error("Erro ao criar especialidade:", error);
+      throw new Error(error instanceof Error ? error.message : "Erro interno do servidor");
+    }
+  });
+```
+
+#### Arquivo: src/actions/create-specialty/schema.ts
+```typescript
+import { z } from "zod";
+
+export const createSpecialtySchema = z.object({
+  clinicId: z.string().uuid("ID da clínica inválido"),
+  specialtyName: z.string().min(1, "Nome da especialidade é obrigatório"),
+  specialtyCode: z.string().min(1, "Código da especialidade é obrigatório"),
+  displayName: z.string().min(1, "Nome de exibição é obrigatório"),
+  description: z.string().optional(),
+  fields: z.array(z.object({
+    name: z.string(),
+    type: z.enum(["text", "textarea", "number", "select", "multiselect", "date", "datetime", "boolean", "file", "signature"]),
+    label: z.string(),
+    required: z.boolean().optional(),
+    defaultValue: z.string().optional(),
+    validation: z.record(z.any()).optional(),
+    options: z.array(z.string()).optional(),
+  })).optional(),
+  templates: z.record(z.any()).optional(),
+  validationRules: z.record(z.any()).optional(),
+});
+
+export type CreateSpecialtySchema = z.infer<typeof createSpecialtySchema>;
+```
+
+### 4. Templates de Especialidades
+
+#### Cardiologia
+```typescript
+// src/lib/specialty-templates/cardiology.ts
+export const cardiologyTemplate = {
+  specialtyName: "Cardiologia",
+  specialtyCode: "cardiology",
+  displayName: "Cardiologia",
+  description: "Especialidade médica focada no coração e sistema cardiovascular",
+  fields: [
+    {
+      name: "blood_pressure",
+      type: "text",
+      label: "Pressão Arterial",
+      required: true,
+      validation: {
+        pattern: "\\d{2,3}/\\d{2,3}",
+        message: "Formato: 120/80"
+      }
+    },
+    {
+      name: "heart_rate",
+      type: "number",
+      label: "Frequência Cardíaca (bpm)",
+      required: true,
+      validation: {
+        min: 40,
+        max: 200
+      }
+    },
+    {
+      name: "ecg_findings",
+      type: "textarea",
+      label: "Achados do ECG",
+      required: false
+    },
+    {
+      name: "cardiac_risk_factors",
+      type: "multiselect",
+      label: "Fatores de Risco Cardíaco",
+      options: [
+        "Hipertensão",
+        "Diabetes",
+        "Obesidade",
+        "Tabagismo",
+        "Histórico Familiar",
+        "Sedentarismo",
+        "Dislipidemia"
+      ]
+    },
+    {
+      name: "medications",
+      type: "textarea",
+      label: "Medicações Cardiovasculares",
+      required: false
+    }
+  ],
+  templates: {
+    consultation: {
+      sections: [
+        "Queixa Principal",
+        "História da Doença Atual",
+        "Exame Físico Cardiovascular",
+        "Achados do ECG",
+        "Diagnóstico",
+        "Plano de Tratamento"
+      ]
+    }
+  }
+};
+```
+
+#### Dermatologia
+```typescript
+// src/lib/specialty-templates/dermatology.ts
+export const dermatologyTemplate = {
+  specialtyName: "Dermatologia",
+  specialtyCode: "dermatology",
+  displayName: "Dermatologia",
+  description: "Especialidade médica focada na pele, cabelos e unhas",
+  fields: [
+    {
+      name: "skin_type",
+      type: "select",
+      label: "Tipo de Pele",
+      options: ["Normal", "Oleosa", "Seca", "Mista", "Sensível"]
+    },
+    {
+      name: "lesion_location",
+      type: "text",
+      label: "Localização da Lesão",
+      required: true
+    },
+    {
+      name: "lesion_description",
+      type: "textarea",
+      label: "Descrição da Lesão",
+      required: true
+    },
+    {
+      name: "skin_photos",
+      type: "file",
+      label: "Fotos da Lesão",
+      required: false
+    },
+    {
+      name: "allergies",
+      type: "multiselect",
+      label: "Alergias Cutâneas",
+      options: [
+        "Níquel",
+        "Látex",
+        "Cosméticos",
+        "Medicamentos",
+        "Alimentos",
+        "Nenhuma"
+      ]
+    }
+  ],
+  templates: {
+    consultation: {
+      sections: [
+        "Queixa Principal",
+        "História da Lesão",
+        "Exame Dermatológico",
+        "Fotografias",
+        "Diagnóstico",
+        "Tratamento Prescrito"
+      ]
+    }
+  }
+};
+```
+
+### 5. Interface do Usuário
+
+#### Componente de Configuração de Especialidades
+```typescript
+// src/app/(protected)/admin/specialties/_components/specialty-configurator.tsx
+export default function SpecialtyConfigurator() {
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
+  const [customFields, setCustomFields] = useState<Array<{
+    name: string;
+    type: string;
+    label: string;
+    required: boolean;
+    options?: string[];
+  }>>([]);
+
+  const createSpecialtyAction = useAction(createSpecialty, {
+    onSuccess: ({ data }) => {
+      if (data?.success) {
+        toast.success("Especialidade criada com sucesso!");
+      }
+    },
+  });
+
+  const handleTemplateSelect = (templateCode: string) => {
+    setSelectedTemplate(templateCode);
+    const template = getSpecialtyTemplate(templateCode);
+    if (template) {
+      setCustomFields(template.fields || []);
+    }
+  };
+
+  const handleAddField = () => {
+    setCustomFields([...customFields, {
+      name: "",
+      type: "text",
+      label: "",
+      required: false,
+    }]);
+  };
+
+  const handleRemoveField = (index: number) => {
+    setCustomFields(customFields.filter((_, i) => i !== index));
+  };
+
+  const handleFieldChange = (index: number, field: string, value: any) => {
+    const newFields = [...customFields];
+    newFields[index] = { ...newFields[index], [field]: value };
+    setCustomFields(newFields);
+  };
+
+  const handleSubmit = (formData: any) => {
+    createSpecialtyAction.execute({
+      ...formData,
+      fields: customFields,
+    });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Configurar Especialidade</CardTitle>
+        <CardDescription>
+          Crie uma nova especialidade médica com campos customizados
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-6">
+          <div className="space-y-4">
+            <Label>Template de Especialidade</Label>
+            <Select value={selectedTemplate} onValueChange={handleTemplateSelect}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione um template" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="cardiology">Cardiologia</SelectItem>
+                <SelectItem value="dermatology">Dermatologia</SelectItem>
+                <SelectItem value="orthopedics">Ortopedia</SelectItem>
+                <SelectItem value="pediatrics">Pediatria</SelectItem>
+                <SelectItem value="gynecology">Ginecologia</SelectItem>
+                <SelectItem value="custom">Personalizado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label>Campos Customizados</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAddField}
+              >
+                Adicionar Campo
+              </Button>
+            </div>
+
+            <div className="space-y-4">
+              {customFields.map((field, index) => (
+                <div key={index} className="border rounded-lg p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium">Campo {index + 1}</h4>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveField(index)}
+                    >
+                      Remover
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Nome do Campo</Label>
+                      <Input
+                        value={field.name}
+                        onChange={(e) => handleFieldChange(index, "name", e.target.value)}
+                        placeholder="ex: blood_pressure"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Tipo</Label>
+                      <Select
+                        value={field.type}
+                        onValueChange={(value) => handleFieldChange(index, "type", value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="text">Texto</SelectItem>
+                          <SelectItem value="textarea">Área de Texto</SelectItem>
+                          <SelectItem value="number">Número</SelectItem>
+                          <SelectItem value="select">Seleção</SelectItem>
+                          <SelectItem value="multiselect">Múltipla Seleção</SelectItem>
+                          <SelectItem value="date">Data</SelectItem>
+                          <SelectItem value="boolean">Sim/Não</SelectItem>
+                          <SelectItem value="file">Arquivo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Rótulo</Label>
+                      <Input
+                        value={field.label}
+                        onChange={(e) => handleFieldChange(index, "label", e.target.value)}
+                        placeholder="ex: Pressão Arterial"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`required-${index}`}
+                      checked={field.required}
+                      onCheckedChange={(checked) => handleFieldChange(index, "required", checked)}
+                    />
+                    <Label htmlFor={`required-${index}`}>Campo obrigatório</Label>
+                  </div>
+
+                  {(field.type === "select" || field.type === "multiselect") && (
+                    <div className="space-y-2">
+                      <Label>Opções</Label>
+                      <DynamicList
+                        items={field.options || []}
+                        onChange={(options) => handleFieldChange(index, "options", options)}
+                        placeholder="Adicionar opção"
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+#### Componente de Formulário Dinâmico
+```typescript
+// src/components/ui/dynamic-form.tsx
+interface DynamicFormProps {
+  specialtyId: string;
+  fields: Array<{
+    name: string;
+    type: string;
+    label: string;
+    required: boolean;
+    options?: string[];
+    validation?: Record<string, any>;
+  }>;
+  onSubmit: (data: Record<string, any>) => void;
+}
+
+export default function DynamicForm({ specialtyId, fields, onSubmit }: DynamicFormProps) {
+  const [formData, setFormData] = useState<Record<string, any>>({});
+
+  const handleFieldChange = (fieldName: string, value: any) => {
+    setFormData({
+      ...formData,
+      [fieldName]: value,
+    });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(formData);
+  };
+
+  const renderField = (field: any) => {
+    switch (field.type) {
+      case "text":
+        return (
+          <Input
+            value={formData[field.name] || ""}
+            onChange={(e) => handleFieldChange(field.name, e.target.value)}
+            placeholder={field.label}
+            required={field.required}
+          />
+        );
+
+      case "textarea":
+        return (
+          <Textarea
+            value={formData[field.name] || ""}
+            onChange={(e) => handleFieldChange(field.name, e.target.value)}
+            placeholder={field.label}
+            required={field.required}
+          />
+        );
+
+      case "number":
+        return (
+          <Input
+            type="number"
+            value={formData[field.name] || ""}
+            onChange={(e) => handleFieldChange(field.name, e.target.value)}
+            placeholder={field.label}
+            required={field.required}
+          />
+        );
+
+      case "select":
+        return (
+          <Select
+            value={formData[field.name] || ""}
+            onValueChange={(value) => handleFieldChange(field.name, value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={field.label} />
+            </SelectTrigger>
+            <SelectContent>
+              {field.options?.map((option: string) => (
+                <SelectItem key={option} value={option}>
+                  {option}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+
+      case "multiselect":
+        return (
+          <div className="space-y-2">
+            {field.options?.map((option: string) => (
+              <div key={option} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`${field.name}-${option}`}
+                  checked={formData[field.name]?.includes(option) || false}
+                  onCheckedChange={(checked) => {
+                    const currentValues = formData[field.name] || [];
+                    const newValues = checked
+                      ? [...currentValues, option]
+                      : currentValues.filter((v: string) => v !== option);
+                    handleFieldChange(field.name, newValues);
+                  }}
+                />
+                <Label htmlFor={`${field.name}-${option}`}>{option}</Label>
+              </div>
+            ))}
+          </div>
+        );
+
+      case "date":
+        return (
+          <Input
+            type="date"
+            value={formData[field.name] || ""}
+            onChange={(e) => handleFieldChange(field.name, e.target.value)}
+            required={field.required}
+          />
+        );
+
+      case "boolean":
+        return (
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id={field.name}
+              checked={formData[field.name] || false}
+              onCheckedChange={(checked) => handleFieldChange(field.name, checked)}
+            />
+            <Label htmlFor={field.name}>{field.label}</Label>
+          </div>
+        );
+
+      default:
+        return (
+          <Input
+            value={formData[field.name] || ""}
+            onChange={(e) => handleFieldChange(field.name, e.target.value)}
+            placeholder={field.label}
+            required={field.required}
+          />
+        );
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {fields.map((field) => (
+        <div key={field.name} className="space-y-2">
+          <Label htmlFor={field.name}>
+            {field.label}
+            {field.required && <span className="text-red-500 ml-1">*</span>}
+          </Label>
+          {renderField(field)}
+        </div>
+      ))}
+
+      <Button type="submit" className="w-full">
+        Salvar Dados da Especialidade
+      </Button>
+    </form>
+  );
+}
+```
+
+### 6. Integração com Sistema Existente
+
+#### Extensão do Formulário de Atendimento
+```typescript
+// src/app/(doctor)/doctor/medical-visits/[appointmentId]/_components/medical-visit-form.tsx
+// Adicionar campos dinâmicos baseados na especialidade
+{doctor.specialty && (
+  <Card>
+    <CardHeader>
+      <CardTitle>Dados da Especialidade - {doctor.specialty.displayName}</CardTitle>
+      <CardDescription>
+        Campos específicos da especialidade médica
+      </CardDescription>
+    </CardHeader>
+    <CardContent>
+      <DynamicForm
+        specialtyId={doctor.specialty.id}
+        fields={doctor.specialty.fields}
+        onSubmit={(data) => {
+          // Salvar dados da especialidade
+          saveSpecialtyData(medicalVisitId, data);
+        }}
+      />
+    </CardContent>
+  </Card>
+)}
+```
+
+### 7. Testes e Validação
+
+#### Testes de Funcionalidade
+- Verificar criação de especialidades
+- Testar campos dinâmicos
+- Validar templates específicos
+- Testar validações customizadas
+
+#### Testes de Interface
+- Testar configurador de especialidades
+- Validar formulários dinâmicos
+- Testar diferentes tipos de campo
+- Verificar responsividade
+
+## Critérios de Conclusão
+
+### Funcionalidades Implementadas
+- Tabela specialty_configurations criada e migrada
+- Tabela specialty_fields para campos dinâmicos
+- Templates para 5 especialidades principais
+- Configurador de especialidades
+- Formulários dinâmicos
+- Validações customizadas
+- Integração com atendimento médico
+
+### Integração com Sistema Existente
+- Extensão do formulário de atendimento
+- Manutenção de funcionalidades existentes
+- Revalidação de cache
+- Consistência de interface
+
+### Flexibilidade e Customização
+- Campos dinâmicos por especialidade
+- Templates pré-configurados
+- Validações específicas
+- Interface adaptável
+
+## Resultado da Fase 6
+Ao final desta fase, os médicos poderão:
+- Usar formulários específicos por especialidade
+- Configurar campos customizados
+- Aplicar validações específicas
+- Utilizar templates pré-definidos
+- Adaptar interface às necessidades
+- Manter consistência clínica
+
+O sistema agora é completamente adaptável para qualquer especialidade médica com flexibilidade total de configuração.
+description:
+globs:
+alwaysApply: true
+---

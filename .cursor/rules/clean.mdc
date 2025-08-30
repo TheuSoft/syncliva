@@ -1,0 +1,5 @@
+---
+alwaysApply: true
+---
+
+Após concluir testes, depuração ou correções, remova todos os arquivos e artefatos temporários criados para essas atividades (ex.: arquivos de debug, logs, dumps, pastas temporárias), mantendo apenas os arquivos essenciais ao projeto. Garanta que nenhum arquivo temporário permaneça no repositório antes de commitar.

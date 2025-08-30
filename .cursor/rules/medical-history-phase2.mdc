@@ -1,0 +1,791 @@
+# FASE 2: Sistema de Prescrições
+
+## Objetivo
+Implementar sistema completo de prescrição de medicamentos integrado ao atendimento médico, com alertas de segurança para alergias e interações medicamentosas.
+
+## Duração
+**Semana 3**
+
+## Atividades Principais
+
+### 1. Extensões no Banco de Dados
+
+#### Nova Tabela: prescribed_medications
+```sql
+CREATE TABLE "prescribed_medications" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  "medical_visit_id" uuid NOT NULL REFERENCES "medical_visits"("id") ON DELETE CASCADE,
+  "medication_name" text NOT NULL,
+  "dosage" text NOT NULL,
+  "frequency" text NOT NULL,
+  "duration" text NOT NULL,
+  "instructions" text,
+  "prescription_date" timestamp DEFAULT now() NOT NULL,
+  "status" medication_status_enum DEFAULT 'active' NOT NULL,
+  "discontinued_date" timestamp,
+  "discontinued_reason" text,
+  "created_at" timestamp DEFAULT now() NOT NULL,
+  "updated_at" timestamp DEFAULT now() NOT NULL
+);
+```
+
+#### Novo Enum: medication_status_enum
+```sql
+CREATE TYPE "medication_status" AS ENUM(
+  'active',
+  'discontinued',
+  'completed'
+);
+```
+
+#### Extensão da Tabela patients
+```sql
+ALTER TABLE "patients" ADD COLUMN "allergies" text[] DEFAULT '{}';
+ALTER TABLE "patients" ADD COLUMN "allergies_notes" text;
+```
+
+### 2. Schema Drizzle
+
+#### Arquivo: src/db/schema.ts
+```typescript
+export const medicationStatusEnum = pgEnum("medication_status", [
+  "active",
+  "discontinued",
+  "completed"
+]);
+
+export const prescribedMedicationsTable = pgTable("prescribed_medications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  medicalVisitId: uuid("medical_visit_id")
+    .notNull()
+    .references(() => medicalVisitsTable.id, { onDelete: "cascade" }),
+  medicationName: text("medication_name").notNull(),
+  dosage: text("dosage").notNull(),
+  frequency: text("frequency").notNull(),
+  duration: text("duration").notNull(),
+  instructions: text("instructions"),
+  prescriptionDate: timestamp("prescription_date").defaultNow().notNull(),
+  status: medicationStatusEnum("status").default("active").notNull(),
+  discontinuedDate: timestamp("discontinued_date"),
+  discontinuedReason: text("discontinued_reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+export const prescribedMedicationsTableRelations = relations(prescribedMedicationsTable, ({ one }) => ({
+  medicalVisit: one(medicalVisitsTable, {
+    fields: [prescribedMedicationsTable.medicalVisitId],
+    references: [medicalVisitsTable.id],
+  }),
+}));
+
+// Extensão da patientsTable
+export const patientsTable = pgTable("patients", {
+  // ... campos existentes ...
+  allergies: text("allergies").array().default([]),
+  allergiesNotes: text("allergies_notes"),
+});
+```
+
+### 3. Server Actions
+
+#### Arquivo: src/actions/prescribe-medication/index.ts
+```typescript
+"use server";
+
+import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+
+import { db } from "@/db";
+import { prescribedMedicationsTable, medicalVisitsTable, patientsTable } from "@/db/schema";
+import { auth } from "@/lib/auth";
+import { actionClient } from "@/lib/next-safe-action";
+
+import { prescribeMedicationSchema } from "./schema";
+
+export const prescribeMedication = actionClient
+  .schema(prescribeMedicationSchema)
+  .action(async ({ parsedInput }) => {
+    try {
+      const session = await auth.api.getSession({
+        headers: await headers(),
+      });
+
+      if (!session?.user) {
+        throw new Error("Unauthorized");
+      }
+
+      if (session.user.role !== "doctor") {
+        throw new Error("Apenas médicos podem prescrever medicamentos");
+      }
+
+      const { medicalVisitId, medicationName, dosage, frequency, duration, instructions } = parsedInput;
+
+      // Verificar se o atendimento médico existe e pertence ao médico
+      const medicalVisit = await db
+        .select({
+          id: medicalVisitsTable.id,
+          appointmentId: medicalVisitsTable.appointmentId,
+        })
+        .from(medicalVisitsTable)
+        .where(eq(medicalVisitsTable.id, medicalVisitId))
+        .limit(1);
+
+      if (medicalVisit.length === 0) {
+        return {
+          success: false,
+          error: "Atendimento médico não encontrado",
+        };
+      }
+
+      // Verificar se o médico tem permissão para este atendimento
+      const appointment = await db
+        .select({ doctorId: appointmentsTable.doctorId })
+        .from(appointmentsTable)
+        .where(eq(appointmentsTable.id, medicalVisit[0].appointmentId))
+        .limit(1);
+
+      if (appointment.length === 0 || appointment[0].doctorId !== session.user.doctorId) {
+        return {
+          success: false,
+          error: "Você não tem permissão para acessar este atendimento",
+        };
+      }
+
+      // Verificar alergias do paciente
+      const patient = await db
+        .select({
+          id: patientsTable.id,
+          name: patientsTable.name,
+          allergies: patientsTable.allergies,
+          allergiesNotes: patientsTable.allergiesNotes,
+        })
+        .from(patientsTable)
+        .innerJoin(appointmentsTable, eq(appointmentsTable.patientId, patientsTable.id))
+        .where(eq(appointmentsTable.id, medicalVisit[0].appointmentId))
+        .limit(1);
+
+      let allergyWarnings = [];
+      if (patient.length > 0 && patient[0].allergies) {
+        const medicationLower = medicationName.toLowerCase();
+        const allergies = patient[0].allergies.map(allergy => allergy.toLowerCase());
+        
+        if (allergies.some(allergy => medicationLower.includes(allergy) || allergy.includes(medicationLower))) {
+          allergyWarnings.push(`ALERTA: Paciente tem alergia conhecida a ${medicationName}`);
+        }
+      }
+
+      // Criar a prescrição
+      const [prescription] = await db
+        .insert(prescribedMedicationsTable)
+        .values({
+          medicalVisitId,
+          medicationName,
+          dosage,
+          frequency,
+          duration,
+          instructions,
+        })
+        .returning();
+
+      revalidatePath(`/doctor/medical-visits/${medicalVisit[0].appointmentId}`);
+
+      return {
+        success: true,
+        data: prescription,
+        warnings: allergyWarnings,
+        message: "Medicação prescrita com sucesso!",
+      };
+
+    } catch (error) {
+      console.error("Erro ao prescrever medicação:", error);
+      throw new Error(error instanceof Error ? error.message : "Erro interno do servidor");
+    }
+  });
+```
+
+#### Arquivo: src/actions/prescribe-medication/schema.ts
+```typescript
+import { z } from "zod";
+
+export const prescribeMedicationSchema = z.object({
+  medicalVisitId: z.string().uuid("ID do atendimento médico inválido"),
+  medicationName: z.string().min(1, "Nome do medicamento é obrigatório"),
+  dosage: z.string().min(1, "Dosagem é obrigatória"),
+  frequency: z.string().min(1, "Frequência é obrigatória"),
+  duration: z.string().min(1, "Duração é obrigatória"),
+  instructions: z.string().optional(),
+});
+
+export type PrescribeMedicationSchema = z.infer<typeof prescribeMedicationSchema>;
+```
+
+#### Arquivo: src/actions/update-patient-allergies/index.ts
+```typescript
+"use server";
+
+import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+
+import { db } from "@/db";
+import { patientsTable } from "@/db/schema";
+import { auth } from "@/lib/auth";
+import { actionClient } from "@/lib/next-safe-action";
+
+import { updatePatientAllergiesSchema } from "./schema";
+
+export const updatePatientAllergies = actionClient
+  .schema(updatePatientAllergiesSchema)
+  .action(async ({ parsedInput }) => {
+    try {
+      const session = await auth.api.getSession({
+        headers: await headers(),
+      });
+
+      if (!session?.user) {
+        throw new Error("Unauthorized");
+      }
+
+      if (session.user.role !== "doctor") {
+        throw new Error("Apenas médicos podem atualizar alergias");
+      }
+
+      const { patientId, allergies, allergiesNotes } = parsedInput;
+
+      // Verificar se o paciente existe
+      const patient = await db
+        .select({ id: patientsTable.id })
+        .from(patientsTable)
+        .where(eq(patientsTable.id, patientId))
+        .limit(1);
+
+      if (patient.length === 0) {
+        return {
+          success: false,
+          error: "Paciente não encontrado",
+        };
+      }
+
+      // Atualizar alergias
+      await db
+        .update(patientsTable)
+        .set({
+          allergies,
+          allergiesNotes,
+          updatedAt: new Date(),
+        })
+        .where(eq(patientsTable.id, patientId));
+
+      revalidatePath(`/doctor/patients/${patientId}`);
+
+      return {
+        success: true,
+        message: "Alergias atualizadas com sucesso!",
+      };
+
+    } catch (error) {
+      console.error("Erro ao atualizar alergias:", error);
+      throw new Error(error instanceof Error ? error.message : "Erro interno do servidor");
+    }
+  });
+```
+
+#### Arquivo: src/actions/update-patient-allergies/schema.ts
+```typescript
+import { z } from "zod";
+
+export const updatePatientAllergiesSchema = z.object({
+  patientId: z.string().uuid("ID do paciente inválido"),
+  allergies: z.array(z.string()).default([]),
+  allergiesNotes: z.string().optional(),
+});
+
+export type UpdatePatientAllergiesSchema = z.infer<typeof updatePatientAllergiesSchema>;
+```
+
+### 4. Interface do Usuário
+
+#### Componente de Prescrição de Medicamentos
+```typescript
+// src/app/(doctor)/doctor/medical-visits/[appointmentId]/_components/prescription-form.tsx
+export default function PrescriptionForm({ medicalVisitId }: { medicalVisitId: string }) {
+  const form = useForm<PrescribeMedicationSchema>({
+    resolver: zodResolver(prescribeMedicationSchema),
+    defaultValues: {
+      medicalVisitId,
+      medicationName: "",
+      dosage: "",
+      frequency: "",
+      duration: "",
+      instructions: "",
+    },
+  });
+
+  const prescribeMedicationAction = useAction(prescribeMedication, {
+    onSuccess: ({ data }) => {
+      if (data?.success) {
+        toast.success("Medicação prescrita com sucesso!");
+        
+        if (data.warnings && data.warnings.length > 0) {
+          data.warnings.forEach(warning => {
+            toast.warning(warning, {
+              duration: 10000,
+            });
+          });
+        }
+        
+        form.reset();
+      }
+    },
+    onError: ({ error }) => {
+      toast.error("Erro ao prescrever medicação", {
+        description: error.serverError || "Tente novamente",
+      });
+    },
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Prescrever Medicação</CardTitle>
+        <CardDescription>
+          Adicione medicamentos à prescrição do paciente
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(prescribeMedicationAction.execute)} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="medicationName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Medicamento *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Nome do medicamento" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="dosage"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Dosagem *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ex: 500mg" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="frequency"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Frequência *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ex: 2x ao dia" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="duration"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Duração *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ex: 7 dias" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="instructions"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Instruções Especiais</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Instruções específicas para o paciente"
+                      className="min-h-[80px]"
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="flex justify-end">
+              <Button 
+                type="submit"
+                disabled={prescribeMedicationAction.status === "executing"}
+              >
+                {prescribeMedicationAction.status === "executing" ? "Prescrevendo..." : "Prescrever"}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+#### Componente de Lista de Medicações
+```typescript
+// src/app/(doctor)/doctor/medical-visits/[appointmentId]/_components/medications-list.tsx
+export default function MedicationsList({ medicalVisitId }: { medicalVisitId: string }) {
+  const { data: medications, isLoading } = useQuery({
+    queryKey: ["prescribed-medications", medicalVisitId],
+    queryFn: () => getPrescribedMedications(medicalVisitId),
+  });
+
+  const updateMedicationStatusAction = useAction(updateMedicationStatus, {
+    onSuccess: ({ data }) => {
+      if (data?.success) {
+        toast.success("Status da medicação atualizado!");
+      }
+    },
+  });
+
+  if (isLoading) {
+    return <div>Carregando medicações...</div>;
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Medicações Prescritas</CardTitle>
+        <CardDescription>
+          Lista de medicamentos prescritos neste atendimento
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {medications && medications.length > 0 ? (
+          <div className="space-y-4">
+            {medications.map((medication) => (
+              <div key={medication.id} className="border rounded-lg p-4">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <h4 className="font-semibold">{medication.medicationName}</h4>
+                      <Badge 
+                        variant={medication.status === 'active' ? 'default' : 'secondary'}
+                      >
+                        {medication.status === 'active' ? 'Ativo' : 'Suspenso'}
+                      </Badge>
+                    </div>
+                    <div className="text-sm text-muted-foreground space-y-1">
+                      <p><strong>Dosagem:</strong> {medication.dosage}</p>
+                      <p><strong>Frequência:</strong> {medication.frequency}</p>
+                      <p><strong>Duração:</strong> {medication.duration}</p>
+                      {medication.instructions && (
+                        <p><strong>Instruções:</strong> {medication.instructions}</p>
+                      )}
+                    </div>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => updateMedicationStatusAction.execute({
+                          medicationId: medication.id,
+                          status: medication.status === 'active' ? 'discontinued' : 'active'
+                        })}
+                      >
+                        {medication.status === 'active' ? 'Suspender' : 'Reativar'}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            <Pills className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>Nenhuma medicação prescrita ainda</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+#### Componente de Alergias do Paciente
+```typescript
+// src/app/(doctor)/doctor/medical-visits/[appointmentId]/_components/patient-allergies.tsx
+export default function PatientAllergies({ patientId }: { patientId: string }) {
+  const { data: patient } = useQuery({
+    queryKey: ["patient", patientId],
+    queryFn: () => getPatient(patientId),
+  });
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [allergies, setAllergies] = useState<string[]>([]);
+  const [allergiesNotes, setAllergiesNotes] = useState("");
+
+  const updateAllergiesAction = useAction(updatePatientAllergies, {
+    onSuccess: ({ data }) => {
+      if (data?.success) {
+        toast.success("Alergias atualizadas com sucesso!");
+        setIsEditing(false);
+      }
+    },
+  });
+
+  useEffect(() => {
+    if (patient) {
+      setAllergies(patient.allergies || []);
+      setAllergiesNotes(patient.allergiesNotes || "");
+    }
+  }, [patient]);
+
+  const handleAddAllergy = () => {
+    setAllergies([...allergies, ""]);
+  };
+
+  const handleRemoveAllergy = (index: number) => {
+    setAllergies(allergies.filter((_, i) => i !== index));
+  };
+
+  const handleAllergyChange = (index: number, value: string) => {
+    const newAllergies = [...allergies];
+    newAllergies[index] = value;
+    setAllergies(newAllergies);
+  };
+
+  const handleSave = () => {
+    updateAllergiesAction.execute({
+      patientId,
+      allergies: allergies.filter(allergy => allergy.trim() !== ""),
+      allergiesNotes,
+    });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Alergias do Paciente</CardTitle>
+            <CardDescription>
+              Histórico de alergias conhecidas
+            </CardDescription>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsEditing(!isEditing)}
+          >
+            {isEditing ? "Cancelar" : "Editar"}
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {isEditing ? (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Alergias</Label>
+              {allergies.map((allergy, index) => (
+                <div key={index} className="flex space-x-2">
+                  <Input
+                    value={allergy}
+                    onChange={(e) => handleAllergyChange(index, e.target.value)}
+                    placeholder="Nome da alergia"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleRemoveAllergy(index)}
+                  >
+                    Remover
+                  </Button>
+                </div>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAddAllergy}
+              >
+                Adicionar Alergia
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Observações</Label>
+              <Textarea
+                value={allergiesNotes}
+                onChange={(e) => setAllergiesNotes(e.target.value)}
+                placeholder="Observações sobre as alergias"
+              />
+            </div>
+
+            <div className="flex justify-end space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsEditing(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={updateAllergiesAction.status === "executing"}
+              >
+                {updateAllergiesAction.status === "executing" ? "Salvando..." : "Salvar"}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {patient?.allergies && patient.allergies.length > 0 ? (
+              <div className="space-y-2">
+                {patient.allergies.map((allergy, index) => (
+                  <Badge key={index} variant="destructive">
+                    {allergy}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground">Nenhuma alergia registrada</p>
+            )}
+
+            {patient?.allergiesNotes && (
+              <div className="space-y-2">
+                <Label>Observações</Label>
+                <p className="text-sm text-muted-foreground">
+                  {patient.allergiesNotes}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+### 5. Integração com Sistema Existente
+
+#### Extensão do Formulário de Atendimento
+```typescript
+// src/app/(doctor)/doctor/medical-visits/[appointmentId]/_components/medical-visit-form.tsx
+// Adicionar seção de prescrições ao formulário existente
+<div className="space-y-6">
+  {/* ... campos existentes ... */}
+  
+  <PatientAllergies patientId={patientId} />
+  <PrescriptionForm medicalVisitId={medicalVisitId} />
+  <MedicationsList medicalVisitId={medicalVisitId} />
+</div>
+```
+
+### 6. Alertas de Segurança
+
+#### Sistema de Verificação de Alergias
+```typescript
+// src/lib/medication-safety.ts
+export function checkMedicationAllergies(
+  medicationName: string,
+  patientAllergies: string[]
+): string[] {
+  const warnings: string[] = [];
+  const medicationLower = medicationName.toLowerCase();
+  
+  patientAllergies.forEach(allergy => {
+    const allergyLower = allergy.toLowerCase();
+    if (medicationLower.includes(allergyLower) || allergyLower.includes(medicationLower)) {
+      warnings.push(`ALERTA: Paciente tem alergia conhecida a ${allergy}`);
+    }
+  });
+  
+  return warnings;
+}
+
+export function checkDrugInteractions(
+  newMedication: string,
+  currentMedications: string[]
+): string[] {
+  // Implementar verificação de interações medicamentosas
+  // Pode integrar com APIs externas de farmacologia
+  return [];
+}
+```
+
+### 7. Testes e Validação
+
+#### Testes de Segurança
+- Verificar alertas de alergia
+- Testar validações de prescrição
+- Validar permissões de acesso
+- Testar integração com dados do paciente
+
+#### Testes de Interface
+- Testar formulário de prescrição
+- Validar lista de medicações
+- Testar edição de alergias
+- Verificar alertas visuais
+
+## Critérios de Conclusão
+
+### Funcionalidades Implementadas
+- Tabela prescribed_medications criada e migrada
+- Extensão da tabela patients com alergias
+- Server Actions para prescrições
+- Sistema de alertas de alergia
+- Interface de prescrição de medicamentos
+- Lista de medicações prescritas
+- Gestão de alergias do paciente
+- Validações de segurança
+
+### Integração com Sistema Existente
+- Integração com atendimento médico
+- Alertas em tempo real
+- Histórico de medicações
+- Manutenção de funcionalidades existentes
+
+### Segurança e Validação
+- Verificação de alergias
+- Alertas visuais
+- Validação de permissões
+- Tratamento de erros
+
+## Resultado da Fase 2
+Ao final desta fase, os médicos poderão:
+- Prescrever medicamentos com segurança
+- Receber alertas de alergia em tempo real
+- Gerenciar histórico de medicações
+- Atualizar alergias dos pacientes
+- Visualizar prescrições ativas e suspensas
+
+O sistema agora possui capacidades completas de prescrição médica com foco em segurança e rastreabilidade.
+description:
+globs:
+alwaysApply: true
+---

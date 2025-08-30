@@ -47,7 +47,7 @@ const LoginForm = () => {
         },
         body: JSON.stringify({
           email: values.email,
-          expectedRole: "clinic_admin",
+          expectedRole: "admin",
         }),
       });
 

@@ -1,0 +1,45 @@
+---
+alwaysApply: true
+---
+
+# Instruções de Arquitetura e Padrões do Projeto
+
+## Tecnologias e Ferramentas
+- Next.js 15 (App Router)
+- TypeScript
+- Tailwind CSS
+- shadcn/ui
+- React Hook Form
+- Zod
+- BetterAuth
+- PostgreSQL
+- Drizzle ORM
+- dayjs (datas)
+- react-number-format (máscaras de input)
+
+## Princípios Gerais
+- Escreva código limpo, conciso e fácil de manter (SOLID, Clean Code).
+- Use nomes de variáveis descritivos (ex: isLoading, hasError).
+- Use kebab-case para nomes de pastas e arquivos.
+- Sempre utilize TypeScript.
+- Evite duplicidade de código (DRY). Crie funções/componentes reutilizáveis quando necessário.
+
+## Padrões React/Next.js
+- Sempre estilize com Tailwind.
+- Priorize componentes do shadcn/ui (https://ui.shadcn.com/).
+- Use Zod para validação de formulários.
+- Use React Hook Form para criação/validação de formulários, utilizando o componente `form.tsx` (`src/components/ui/form.tsx`).
+- Componentes exclusivos de página devem ficar em `_components` dentro da pasta da página.
+- Utilize "next-safe-action" para Server Actions, armazenando-as em `src/actions` (siga o padrão dos arquivos existentes).
+- Use o hook `useAction` da "next-safe-actions" ao chamar Server Actions em componentes.
+- Para interações com o banco, utilize `src/db/index.ts`.
+- Use dayjs para manipulação/formatação de datas.
+- Use `page-container.tsx` (`src/components/ui/page-container.tsx`) para páginas, mantendo padrão de margin/padding/spacing.
+- Use react-number-format para máscaras de input.
+
+## Organização
+- Siga a estrutura de pastas e arquivos já existente.
+- Crie componentes/funções reutilizáveis para evitar duplicidade.
+- Documente e comente trechos complexos quando necessário.
+
+Essas instruções garantem consistência, qualidade e facilidade de manutenção no projeto. Consulte exemplos e templates nos arquivos citados para referência.
