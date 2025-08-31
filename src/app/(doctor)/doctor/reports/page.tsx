@@ -12,6 +12,7 @@ import {
 import React, { useEffect, useState } from "react";
 
 import { getDoctorReportsAction } from "@/actions/get-doctor-reports";
+import { formatCurrencyInCents } from "@/app/(protected)/doctors/_helpers/availability";
 import type { RelatorioFiltro } from "@/app/(protected)/reports/relatorio";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,7 +42,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatCurrencyInCents } from "@/helpers/currency";
 import type { AppointmentWithRelations } from "@/types/appointments";
 
 export default function DoctorReportsPage() {

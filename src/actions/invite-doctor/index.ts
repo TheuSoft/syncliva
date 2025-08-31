@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
 import { db } from "@/db";
-import { doctorsTable } from "@/db/schema";
+import { doctorsTable, usersTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { actionClient } from "@/lib/next-safe-action";
 
@@ -20,11 +20,11 @@ export const inviteDoctor = actionClient
       const session = await auth.api.getSession({
         headers: await headers(),
       });
-      
+
       if (!session?.user) {
         throw new Error("Unauthorized");
       }
-      
+
       if (!session?.user.clinic?.id) {
         throw new Error("Clínica não encontrada");
       }
@@ -39,10 +39,33 @@ export const inviteDoctor = actionClient
         .where(eq(doctorsTable.email, email))
         .limit(1);
 
-      if (existingDoctorWithEmail.length > 0 && existingDoctorWithEmail[0].id !== doctorId) {
+      if (
+        existingDoctorWithEmail.length > 0 &&
+        existingDoctorWithEmail[0].id !== doctorId
+      ) {
         return {
           success: false,
           error: `Este email já está sendo usado por outro médico: ${existingDoctorWithEmail[0].name}`,
+        };
+      }
+
+      // Verificar se o email já está sendo usado por um usuário no sistema
+      const existingUserWithEmail = await db
+        .select({
+          id: usersTable.id,
+          name: usersTable.name,
+          role: usersTable.role,
+        })
+        .from(usersTable)
+        .where(eq(usersTable.email, email))
+        .limit(1);
+
+      if (existingUserWithEmail.length > 0) {
+        const user = existingUserWithEmail[0];
+        const userType = user.role === "doctor" ? "médico" : "administrador";
+        return {
+          success: false,
+          error: `Este email já está sendo usado por um ${userType} no sistema`,
         };
       }
 
@@ -88,13 +111,16 @@ export const inviteDoctor = actionClient
       if (doctor.inviteToken) {
         return {
           success: false,
-          error: "Este médico já possui um convite ativo. Use 'Reenviar' para gerar um novo token.",
+          error:
+            "Este médico já possui um convite ativo. Use 'Reenviar' para gerar um novo token.",
         };
       }
 
       // Gerar token único para o convite
       const inviteToken = crypto.randomBytes(32).toString("hex");
-      const inviteTokenExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 dias
+      const inviteTokenExpiresAt = new Date(
+        Date.now() + 7 * 24 * 60 * 60 * 1000,
+      ); // 7 dias
 
       // Atualizar o médico com as informações do convite
       await db
@@ -108,7 +134,8 @@ export const inviteDoctor = actionClient
         .where(eq(doctorsTable.id, doctorId));
 
       // Gerar link de convite
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
       const inviteLink = `${baseUrl}/auth/doctor-register?token=${inviteToken}`;
 
       // Não enviar email automaticamente - apenas retornar o link
@@ -129,11 +156,13 @@ export const inviteDoctor = actionClient
         doctorName: doctor.name,
         doctorEmail: email,
       };
-      
+
       console.log("🎯 Invite Doctor Action Result:", result);
       return result;
     } catch (error) {
       console.error("Erro ao enviar convite:", error);
-      throw new Error(error instanceof Error ? error.message : "Erro interno do servidor");
+      throw new Error(
+        error instanceof Error ? error.message : "Erro interno do servidor",
+      );
     }
   });

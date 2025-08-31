@@ -1,13 +1,13 @@
 import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 
+import { formatCurrencyInCents } from "@/app/(protected)/doctors/_helpers/availability";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageContainer } from "@/components/ui/page-container";
 import { db } from "@/db";
 import { doctorsTable } from "@/db/schema";
-import { formatCurrencyInCents } from "@/helpers/currency";
 import { auth } from "@/lib/auth";
 
 // Forçar renderização dinâmica devido ao uso de headers()

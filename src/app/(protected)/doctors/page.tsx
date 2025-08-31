@@ -1,7 +1,9 @@
 import { eq } from "drizzle-orm";
+import { Stethoscope, UserCheck, Users, UserX } from "lucide-react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   PageActions,
   PageContainer,
@@ -32,51 +34,121 @@ const DoctorsPage = async () => {
     where: eq(doctorsTable.clinicId, session.user.clinic.id),
   });
 
+  // Calcular estatísticas
+  const totalDoctors = doctors.length;
+  const activeDoctors = doctors.filter(
+    (doctor) => !!doctor.registeredAt,
+  ).length;
+  const invitedDoctors = doctors.filter(
+    (doctor) => !!doctor.inviteToken && !doctor.registeredAt,
+  ).length;
+  const pendingDoctors = doctors.filter(
+    (doctor) => !doctor.inviteToken && !doctor.registeredAt,
+  ).length;
+
   return (
     <PageContainer>
       <PageHeader>
         <PageHeaderContent>
           <PageTitle>Médicos</PageTitle>
           <PageDescription>
-            Gerencie os médicos cadastrados no sistema
+            Gerencie os médicos cadastrados no sistema da sua clínica
           </PageDescription>
         </PageHeaderContent>
         <PageActions>
           <AddDoctorButton />
         </PageActions>
       </PageHeader>
+
       <PageContent>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {doctors.map((doctor) => (
-            <DoctorCard key={doctor.id} doctor={doctor} />
-          ))}
+        {/* Estatísticas */}
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Total de Médicos
+              </CardTitle>
+              <Users className="text-primary h-4 w-4" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalDoctors}</div>
+              <p className="text-muted-foreground text-xs">
+                Médicos cadastrados
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Médicos Ativos
+              </CardTitle>
+              <UserCheck className="h-4 w-4 text-emerald-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-emerald-600">
+                {activeDoctors}
+              </div>
+              <p className="text-muted-foreground text-xs">
+                Já registrados no sistema
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Convidados</CardTitle>
+              <Stethoscope className="h-4 w-4 text-amber-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-amber-600">
+                {invitedDoctors}
+              </div>
+              <p className="text-muted-foreground text-xs">
+                Aguardando registro
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pendentes</CardTitle>
+              <UserX className="text-muted-foreground h-4 w-4" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-muted-foreground text-2xl font-bold">
+                {pendingDoctors}
+              </div>
+              <p className="text-muted-foreground text-xs">
+                Sem convite enviado
+              </p>
+            </CardContent>
+          </Card>
         </div>
 
-        {doctors.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="from-muted/20 to-muted/10 mb-4 rounded-full bg-gradient-to-br p-6">
-              <svg
-                className="text-muted-foreground h-12 w-12"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                />
-              </svg>
-            </div>
-            <h3 className="text-foreground mb-2 text-lg font-semibold">
-              Nenhum médico cadastrado
-            </h3>
-            <p className="text-muted-foreground mb-4">
-              Comece adicionando o primeiro médico ao sistema
-            </p>
-            <AddDoctorButton />
+        {/* Lista de médicos */}
+        {doctors.length > 0 ? (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {doctors.map((doctor) => (
+              <DoctorCard key={doctor.id} doctor={doctor} />
+            ))}
           </div>
+        ) : (
+          <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="from-muted/20 to-muted/10 mb-4 rounded-full bg-gradient-to-br p-6">
+                <Stethoscope className="text-muted-foreground h-12 w-12" />
+              </div>
+              <h3 className="text-foreground mb-2 text-lg font-semibold">
+                Nenhum médico cadastrado
+              </h3>
+              <p className="text-muted-foreground mb-6 max-w-sm">
+                Comece adicionando o primeiro médico ao sistema da sua clínica
+                para gerenciar consultas e agendamentos.
+              </p>
+              <AddDoctorButton />
+            </CardContent>
+          </Card>
         )}
       </PageContent>
     </PageContainer>

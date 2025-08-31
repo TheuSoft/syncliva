@@ -24,3 +24,29 @@ export const getAvailability = (doctor: typeof doctorsTable.$inferSelect) => {
 
   return { from, to };
 };
+
+/**
+ * Gera slots de horários disponíveis para agendamentos
+ * @returns Array de strings no formato "HH:mm:ss" com intervalos de 1 hora
+ */
+export const generateTimeSlots = () => {
+  const slots = [];
+  // ✅ HORÁRIOS: Gerar slots das 07:00 às 20:00 (07h às 20h) - Intervalo de 1:00h
+  for (let hour = 7; hour <= 20; hour++) {
+    const timeString = `${hour.toString().padStart(2, "0")}:00:00`;
+    slots.push(timeString);
+  }
+  return slots;
+};
+
+/**
+ * Formata valores em centavos para moeda brasileira
+ * @param amount - Valor em centavos
+ * @returns String formatada em reais (R$)
+ */
+export const formatCurrencyInCents = (amount: number) => {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(amount / 100);
+};

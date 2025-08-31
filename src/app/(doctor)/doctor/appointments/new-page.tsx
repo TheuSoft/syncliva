@@ -5,10 +5,10 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { getDoctorAppointments } from "@/actions/get-doctor-appointments";
+import { formatCurrencyInCents } from "@/app/(protected)/doctors/_helpers/availability";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageContainer } from "@/components/ui/page-container";
-import { formatCurrencyInCents } from "@/helpers/currency";
 import { auth } from "@/lib/auth";
 
 dayjs.extend(utc);

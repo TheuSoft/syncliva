@@ -7,9 +7,9 @@ import { and, eq, ne } from "drizzle-orm";
 import { headers } from "next/headers";
 import { z } from "zod";
 
+import { generateTimeSlots } from "@/app/(protected)/doctors/_helpers/availability";
 import { db } from "@/db";
 import { appointmentsTable, doctorsTable } from "@/db/schema";
-import { generateTimeSlots } from "@/helpers/time";
 import { auth } from "@/lib/auth";
 import { actionClient } from "@/lib/next-safe-action";
 

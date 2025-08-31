@@ -6,8 +6,10 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import dayjs from "dayjs";
 import { CalendarIcon } from "lucide-react";
+import { Search } from "lucide-react";
 import { useAction } from "next-safe-action/hooks";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { NumericFormat } from "react-number-format";
 import { toast } from "sonner";
@@ -81,6 +83,37 @@ const AddAppointmentForm = ({
   onSuccess,
   isOpen,
 }: AddAppointmentFormProps) => {
+  const [patientSearchTerm, setPatientSearchTerm] = useState("");
+  const [doctorSearchTerm, setDoctorSearchTerm] = useState("");
+  const [isPatientSelectOpen, setIsPatientSelectOpen] = useState(false);
+  const [isDoctorSelectOpen, setIsDoctorSelectOpen] = useState(false);
+
+  const patientSearchRef = useRef<HTMLInputElement>(null);
+  const doctorSearchRef = useRef<HTMLInputElement>(null);
+
+  // Filtrar pacientes baseado no termo de busca
+  const filteredPatients = useMemo(() => {
+    if (!patientSearchTerm.trim()) {
+      return patients;
+    }
+
+    return patients.filter((patient) =>
+      patient.name.toLowerCase().includes(patientSearchTerm.toLowerCase()),
+    );
+  }, [patients, patientSearchTerm]);
+
+  // Filtrar médicos baseado no termo de busca
+  const filteredDoctors = useMemo(() => {
+    if (!doctorSearchTerm.trim()) {
+      return doctors;
+    }
+
+    return doctors.filter(
+      (doctor) =>
+        doctor.name.toLowerCase().includes(doctorSearchTerm.toLowerCase()) ||
+        doctor.specialty.toLowerCase().includes(doctorSearchTerm.toLowerCase()),
+    );
+  }, [doctors, doctorSearchTerm]);
   // Função helper para agrupar horários por período do dia
   const groupTimesByPeriod = (
     times: Array<{ value: string; available: boolean; label: string }>,
@@ -224,6 +257,55 @@ const AddAppointmentForm = ({
 
   const isDateTimeEnabled = selectedPatientId && selectedDoctorId;
 
+  // Limpar filtros quando o modal for fechado
+  useEffect(() => {
+    if (!isOpen) {
+      setPatientSearchTerm("");
+      setDoctorSearchTerm("");
+      setIsPatientSelectOpen(false);
+      setIsDoctorSelectOpen(false);
+    }
+  }, [isOpen]);
+
+  // Manter foco no input de busca quando o select estiver aberto
+  useEffect(() => {
+    if (isPatientSelectOpen && patientSearchRef.current) {
+      // Pequeno delay para garantir que o DOM esteja pronto
+      setTimeout(() => {
+        if (patientSearchRef.current) {
+          patientSearchRef.current.focus();
+        }
+      }, 10);
+    }
+  }, [isPatientSelectOpen]);
+
+  useEffect(() => {
+    if (isDoctorSelectOpen && doctorSearchRef.current) {
+      // Pequeno delay para garantir que o DOM esteja pronto
+      setTimeout(() => {
+        if (doctorSearchRef.current) {
+          doctorSearchRef.current.focus();
+        }
+      }, 10);
+    }
+  }, [isDoctorSelectOpen]);
+
+  // Adicionar listener para manter foco durante digitação
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Se o foco estiver no input de busca, impedir que o Select intercepte
+      if (
+        document.activeElement === patientSearchRef.current ||
+        document.activeElement === doctorSearchRef.current
+      ) {
+        e.stopPropagation();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown, true);
+    return () => document.removeEventListener("keydown", handleKeyDown, true);
+  }, []);
+
   return (
     <DialogContent className="sm:max-w-[500px]">
       <DialogHeader>
@@ -243,20 +325,72 @@ const AddAppointmentForm = ({
                 <Select
                   onValueChange={field.onChange}
                   defaultValue={field.value}
+                  open={isPatientSelectOpen}
+                  onOpenChange={setIsPatientSelectOpen}
                 >
                   <FormControl>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Selecione um paciente" />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent>
-                    {patients.map((patient) => (
-                      <SelectItem key={patient.id} value={patient.id}>
-                        <span className="font-medium text-blue-700 dark:text-blue-300">
-                          {patient.name}
-                        </span>
-                      </SelectItem>
-                    ))}
+                  <SelectContent onKeyDown={(e) => e.stopPropagation()}>
+                    {/* Campo de busca */}
+                    <div
+                      className="flex items-center px-3 py-2"
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
+                      <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                      <Input
+                        ref={patientSearchRef}
+                        placeholder="Buscar paciente..."
+                        value={patientSearchTerm}
+                        onChange={(e) => setPatientSearchTerm(e.target.value)}
+                        onKeyDown={(e) => {
+                          // Parar a propagação de TODAS as teclas para evitar interferência do Select
+                          e.stopPropagation();
+                          e.nativeEvent.stopImmediatePropagation();
+
+                          // Permitir apenas navegação manual específica
+                          if (
+                            e.key === "ArrowDown" ||
+                            e.key === "ArrowUp" ||
+                            e.key === "Enter"
+                          ) {
+                            e.preventDefault();
+                          }
+                        }}
+                        className="border-0 p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                        onFocus={(e) => e.target.select()}
+                        autoComplete="off"
+                        spellCheck="false"
+                        onCompositionStart={(e) => e.stopPropagation()}
+                        onCompositionEnd={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    <div className="bg-border h-px" />
+
+                    {/* Lista de pacientes filtrados */}
+                    {filteredPatients.length === 0 ? (
+                      <div className="text-muted-foreground py-6 text-center text-sm">
+                        Nenhum paciente encontrado
+                      </div>
+                    ) : (
+                      filteredPatients.map((patient) => (
+                        <SelectItem
+                          key={patient.id}
+                          value={patient.id}
+                          onSelect={() => {
+                            // Limpar o filtro quando um paciente for selecionado
+                            setPatientSearchTerm("");
+                          }}
+                          className="cursor-pointer"
+                        >
+                          <span className="font-medium text-blue-700 dark:text-blue-300">
+                            {patient.name}
+                          </span>
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -273,20 +407,72 @@ const AddAppointmentForm = ({
                 <Select
                   onValueChange={field.onChange}
                   defaultValue={field.value}
+                  open={isDoctorSelectOpen}
+                  onOpenChange={setIsDoctorSelectOpen}
                 >
                   <FormControl>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Selecione um médico" />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent>
-                    {doctors.map((doctor) => (
-                      <SelectItem key={doctor.id} value={doctor.id}>
-                        <span className="font-medium text-blue-700 dark:text-blue-300">
-                          {doctor.name} - {doctor.specialty}
-                        </span>
-                      </SelectItem>
-                    ))}
+                  <SelectContent onKeyDown={(e) => e.stopPropagation()}>
+                    {/* Campo de busca */}
+                    <div
+                      className="flex items-center px-3 py-2"
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
+                      <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                      <Input
+                        ref={doctorSearchRef}
+                        placeholder="Buscar médico..."
+                        value={doctorSearchTerm}
+                        onChange={(e) => setDoctorSearchTerm(e.target.value)}
+                        onKeyDown={(e) => {
+                          // Parar a propagação de TODAS as teclas para evitar interferência do Select
+                          e.stopPropagation();
+                          e.nativeEvent.stopImmediatePropagation();
+
+                          // Permitir apenas navegação manual específica
+                          if (
+                            e.key === "ArrowDown" ||
+                            e.key === "ArrowUp" ||
+                            e.key === "Enter"
+                          ) {
+                            e.preventDefault();
+                          }
+                        }}
+                        className="border-0 p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                        onFocus={(e) => e.target.select()}
+                        autoComplete="off"
+                        spellCheck="false"
+                        onCompositionStart={(e) => e.stopPropagation()}
+                        onCompositionEnd={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    <div className="bg-border h-px" />
+
+                    {/* Lista de médicos filtrados */}
+                    {filteredDoctors.length === 0 ? (
+                      <div className="text-muted-foreground py-6 text-center text-sm">
+                        Nenhum médico encontrado
+                      </div>
+                    ) : (
+                      filteredDoctors.map((doctor) => (
+                        <SelectItem
+                          key={doctor.id}
+                          value={doctor.id}
+                          onSelect={() => {
+                            // Limpar o filtro quando um médico for selecionado
+                            setDoctorSearchTerm("");
+                          }}
+                          className="cursor-pointer"
+                        >
+                          <span className="font-medium text-blue-700 dark:text-blue-300">
+                            {doctor.name} - {doctor.specialty}
+                          </span>
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
                 <FormMessage />

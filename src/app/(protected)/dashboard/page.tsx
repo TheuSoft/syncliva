@@ -20,6 +20,7 @@ import { appointmentsTable, doctorsTable } from "@/db/schema"; // ✅ Removido p
 import { auth } from "@/lib/auth";
 
 import { columns as appointmentsTableColumns } from "../appointments/_components/table-columns";
+import { columns as todayAppointmentsColumns } from "./_components/today-appointments-columns";
 import AppointmentsChart from "./_components/appointments-chart";
 import { DatePicker } from "./_components/date-picker";
 import StatsCards from "./_components/stats-cards";
@@ -214,32 +215,30 @@ const DashboardPage = async ({ searchParams }: DashboardPageProps) => {
           totalPatients={totalPatients?.total || 0}
           totalDoctors={totalDoctors[0]?.total || 0}
         />
-        <div className="grid grid-cols-[2.25fr_1fr] gap-4">
+        <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
           <AppointmentsChart dailyAppointmentsData={dailyAppointmentsData} />
-          <TopDoctors doctors={topDoctors} />
+          <div className="space-y-6">
+            <TopDoctors doctors={topDoctors} />
+            <TopSpecialties topSpecialties={topSpecialties} />
+          </div>
         </div>
-        <div className="grid grid-cols-[2.25fr_1fr] gap-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <Calendar className="text-muted-foreground" />
-                <CardTitle className="text-base">
-                  Agendamentos de hoje
-                </CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <DataTable
-                columns={appointmentsTableColumns}
-                data={todayAppointments.map((appointment) => ({
-                  ...appointment,
-                  updatedAt: appointment.updatedAt ?? new Date(),
-                }))}
-              />
-            </CardContent>
-          </Card>
-          <TopSpecialties topSpecialties={topSpecialties} />
-        </div>
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <Calendar className="text-muted-foreground" />
+              <CardTitle className="text-base">Agendamentos de hoje</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <DataTable
+              columns={todayAppointmentsColumns}
+              data={todayAppointments.map((appointment) => ({
+                ...appointment,
+                updatedAt: appointment.updatedAt ?? new Date(),
+              }))}
+            />
+          </CardContent>
+        </Card>
       </PageContent>
     </PageContainer>
   );

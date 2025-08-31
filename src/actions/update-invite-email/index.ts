@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import { db } from "@/db";
-import { doctorsTable } from "@/db/schema";
+import { doctorsTable, usersTable } from "@/db/schema";
 import { actionClient } from "@/lib/next-safe-action";
 
 import { updateInviteEmailSchema } from "./schema";
@@ -24,10 +24,33 @@ export const updateInviteEmail = actionClient
         .where(eq(doctorsTable.email, newEmail))
         .limit(1);
 
-      if (existingDoctorWithEmail.length > 0 && existingDoctorWithEmail[0].id !== doctorId) {
+      if (
+        existingDoctorWithEmail.length > 0 &&
+        existingDoctorWithEmail[0].id !== doctorId
+      ) {
         return {
           success: false,
           error: `Este email já está sendo usado por outro médico: ${existingDoctorWithEmail[0].name}`,
+        };
+      }
+
+      // Verificar se o email já está sendo usado por um usuário no sistema
+      const existingUserWithEmail = await db
+        .select({
+          id: usersTable.id,
+          name: usersTable.name,
+          role: usersTable.role,
+        })
+        .from(usersTable)
+        .where(eq(usersTable.email, newEmail))
+        .limit(1);
+
+      if (existingUserWithEmail.length > 0) {
+        const user = existingUserWithEmail[0];
+        const userType = user.role === "doctor" ? "médico" : "administrador";
+        return {
+          success: false,
+          error: `Este email já está sendo usado por um ${userType} no sistema`,
         };
       }
 
@@ -56,7 +79,8 @@ export const updateInviteEmail = actionClient
       if (doctor.registeredAt) {
         return {
           success: false,
-          error: "Este médico já foi registrado no sistema. Não é possível alterar o email.",
+          error:
+            "Este médico já foi registrado no sistema. Não é possível alterar o email.",
         };
       }
 
@@ -70,7 +94,9 @@ export const updateInviteEmail = actionClient
 
       // Gerar novo token de segurança (por segurança)
       const newInviteToken = crypto.randomBytes(32).toString("hex");
-      const inviteTokenExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 dias
+      const inviteTokenExpiresAt = new Date(
+        Date.now() + 7 * 24 * 60 * 60 * 1000,
+      ); // 7 dias
 
       // Atualizar com novo email e token
       await db
@@ -84,7 +110,8 @@ export const updateInviteEmail = actionClient
         .where(eq(doctorsTable.id, doctorId));
 
       // Gerar novo link
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
       const inviteLink = `${baseUrl}/auth/doctor-register?token=${newInviteToken}`;
 
       // Não enviar email automaticamente - apenas retornar o link
@@ -109,6 +136,8 @@ export const updateInviteEmail = actionClient
       };
     } catch (error) {
       console.error("Erro ao alterar email do convite:", error);
-      throw new Error(error instanceof Error ? error.message : "Erro interno do servidor");
+      throw new Error(
+        error instanceof Error ? error.message : "Erro interno do servidor",
+      );
     }
   });
