@@ -106,7 +106,7 @@ export const getAvailableTimesFixed = actionClient
       doctorConfig,
       parsedInput.date,
       existingAppointments,
-      30, // Intervalo de 30 minutos
+      60, // ✅ CORRIGIDO: Intervalo de 60 minutos (1 hora) para manter compatibilidade
     );
 
     console.log(`🎯 Generated ${availableSlots.length} available slots`);
