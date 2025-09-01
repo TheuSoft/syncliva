@@ -16,8 +16,8 @@ dayjs.extend(timezone);
 
 const BRAZIL_TIMEZONE = "America/Sao_Paulo";
 
-import { editAppointment } from "@/actions/edit-appointment";
 import { getAvailableTimes } from "@/actions/get-available-times";
+import { updateAppointment } from "@/actions/update-appointment";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -194,7 +194,7 @@ export function EditAppointmentModal({
       // Converter para UTC para salvar no banco
       const utcDate = localDateTime.utc().toDate();
 
-      const result = await editAppointment({
+      const result = await updateAppointment({
         appointmentId: appointment.id,
         patientId: selectedPatientId,
         doctorId: selectedDoctorId,
