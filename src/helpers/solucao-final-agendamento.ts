@@ -155,7 +155,7 @@ function generateTimeSlots(
   const startMinutes = timeToMinutes(startTime);
   const endMinutes = timeToMinutes(endTime);
 
-  for (let minutes = startMinutes; minutes < endMinutes; minutes += interval) {
+  for (let minutes = startMinutes; minutes <= endMinutes; minutes += interval) {
     slots.push(minutesToTime(minutes));
   }
 

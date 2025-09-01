@@ -264,7 +264,7 @@ function generateTimeSlots(
   // ✅ Gerar slots com intervalo especificado
   for (
     let minutes = startMinutes;
-    minutes < endMinutes;
+    minutes <= endMinutes;
     minutes += intervalMinutes
   ) {
     const timeSlot = minutesToTime(minutes);
