@@ -7,16 +7,24 @@
 
 "use server";
 
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import { and, eq, ne } from "drizzle-orm";
 import { headers } from "next/headers";
 import { z } from "zod";
 
 import { db } from "@/db";
 import { appointmentsTable, doctorsTable } from "@/db/schema";
-import { convertToLocalDate } from "@/helpers/date";
 import { getAvailableTimesRobust } from "@/helpers/solucao-final-agendamento";
 import { auth } from "@/lib/auth";
 import { actionClient } from "@/lib/next-safe-action";
+
+// Configurar dayjs
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const BRAZIL_TIMEZONE = "America/Sao_Paulo";
 
 export const getAvailableTimesFixed = actionClient
   .schema(
@@ -82,12 +90,11 @@ export const getAvailableTimesFixed = actionClient
 
     // ✅ Converter agendamentos para formato esperado pela solução robusta
     const existingAppointments = appointments.map((appointment) => {
-      // Converter UTC para data local para comparação correta
-      const localDate = convertToLocalDate(appointment.date);
+      // Converter UTC para horário brasileiro usando dayjs
+      const brazilTime = dayjs(appointment.date).tz(BRAZIL_TIMEZONE);
       return {
-        date: localDate,
-        // Extrair tempo do date object convertido
-        time: `${String(localDate.getHours()).padStart(2, "0")}:${String(localDate.getMinutes()).padStart(2, "0")}`,
+        date: appointment.date, // Manter data original do banco
+        time: brazilTime.format("HH:mm"), // Horário no timezone brasileiro
       };
     });
 
@@ -109,7 +116,7 @@ export const getAvailableTimesFixed = actionClient
       60, // ✅ CORRIGIDO: Intervalo de 60 minutos (1 hora) para manter compatibilidade
     );
 
-    console.log(`🎯 Generated ${availableSlots.length} available slots`);
+    console.log(`🎯 Generated ${availableSlots.length} total time slots`);
 
     // ✅ Se estamos editando, garantir que o horário atual esteja disponível
     if (parsedInput.excludeAppointmentId) {
@@ -118,16 +125,21 @@ export const getAvailableTimesFixed = actionClient
       });
 
       if (currentAppointment) {
-        const currentLocalDate = convertToLocalDate(currentAppointment.date);
-        const currentTime = `${String(currentLocalDate.getHours()).padStart(2, "0")}:${String(currentLocalDate.getMinutes()).padStart(2, "0")}`;
-
-        // Verificar se o horário atual já está na lista
-        const timeExists = availableSlots.some(
-          (slot) => slot.value === currentTime,
+        // Converter UTC para horário brasileiro usando dayjs
+        const currentBrazilTime = dayjs(currentAppointment.date).tz(
+          BRAZIL_TIMEZONE,
         );
+        const currentTime = currentBrazilTime.format("HH:mm");
 
-        if (!timeExists) {
-          // Adicionar o horário atual como disponível
+        // Marcar o horário atual como disponível (mesmo que esteja ocupado)
+        const slot = availableSlots.find((s) => s.value === currentTime);
+        if (slot) {
+          slot.available = true;
+          console.log(
+            `🎯 Marked current appointment time as available: ${currentTime}`,
+          );
+        } else {
+          // Se não existir, adicionar como disponível
           availableSlots.push({
             value: currentTime,
             label: currentTime,
@@ -136,22 +148,23 @@ export const getAvailableTimesFixed = actionClient
 
           // Reordenar a lista
           availableSlots.sort((a, b) => a.value.localeCompare(b.value));
-        } else {
-          // Marcar como disponível se já existir
-          const slot = availableSlots.find((s) => s.value === currentTime);
-          if (slot) {
-            slot.available = true;
-          }
+          console.log(`🎯 Added current appointment time: ${currentTime}`);
         }
-
-        console.log(`🎯 Added current appointment time: ${currentTime}`);
       }
     }
 
     console.log("🎯 Final result:", {
       total: availableSlots.length,
       available: availableSlots.filter((s) => s.available).length,
-      first5: availableSlots.slice(0, 5).map((s) => s.value),
+      unavailable: availableSlots.filter((s) => !s.available).length,
+      availableSlots: availableSlots
+        .filter((s) => s.available)
+        .map((s) => s.value)
+        .join(", "),
+      unavailableSlots: availableSlots
+        .filter((s) => !s.available)
+        .map((s) => s.value)
+        .join(", "),
     });
 
     return availableSlots;

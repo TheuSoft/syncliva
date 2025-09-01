@@ -71,26 +71,36 @@ export function getAvailableTimesRobust(
     intervalMinutes,
   );
 
-  // ✅ CORREÇÃO 4: Filtrar horários já ocupados
+  // ✅ CORREÇÃO 4: Identificar horários já ocupados
   const occupiedSlots = getOccupiedSlots(existingAppointments, targetDate);
 
-  // ✅ CORREÇÃO 5: Retornar horários disponíveis
-  const availableSlots = allSlots
-    .filter((slot) => !occupiedSlots.includes(slot))
-    .map((time) => ({
-      value: time,
-      label: time,
-      available: true,
-    }));
+  // ✅ CORREÇÃO 5: Retornar TODOS os horários (disponíveis e ocupados)
+  const allTimeSlots = allSlots.map((time) => ({
+    value: time,
+    label: time,
+    available: !occupiedSlots.includes(time), // false se ocupado, true se disponível
+  }));
+
+  const availableCount = allTimeSlots.filter((slot) => slot.available).length;
+  const occupiedCount = allTimeSlots.filter((slot) => !slot.available).length;
 
   console.log(
-    `🕐 Total: ${allSlots.length}, Ocupados: ${occupiedSlots.length}, Disponíveis: ${availableSlots.length}`,
+    `🕐 Total: ${allSlots.length}, Disponíveis: ${availableCount}, Ocupados: ${occupiedCount}`,
   );
   console.log(
-    `✅ Horários disponíveis: ${availableSlots.map((s) => s.value).join(", ")}`,
+    `✅ Horários disponíveis: ${allTimeSlots
+      .filter((s) => s.available)
+      .map((s) => s.value)
+      .join(", ")}`,
+  );
+  console.log(
+    `🚫 Horários ocupados: ${allTimeSlots
+      .filter((s) => !s.available)
+      .map((s) => s.value)
+      .join(", ")}`,
   );
 
-  return availableSlots;
+  return allTimeSlots;
 }
 
 /**

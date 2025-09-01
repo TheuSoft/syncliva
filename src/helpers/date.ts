@@ -9,7 +9,8 @@
  * @returns Data convertida para hora local
  */
 export function convertToLocalDate(utcDate: Date): Date {
-  // Aplicar offset de -3 horas (Brasil)
+  // UTC-3: Para converter UTC para local, SUBTRAÍMOS 3 horas do UTC
+  // Se UTC é 23:00, local é 20:00 (23 - 3 = 20)
   return new Date(utcDate.getTime() - 3 * 60 * 60 * 1000);
 }
 
@@ -19,6 +20,7 @@ export function convertToLocalDate(utcDate: Date): Date {
  * @returns Data convertida para UTC
  */
 export function convertToUTC(localDate: Date): Date {
-  // Aplicar offset de +3 horas para UTC
+  // UTC-3: Para converter local para UTC, ADICIONAMOS 3 horas ao local
+  // Se local é 20:00, UTC é 23:00 (20 + 3 = 23)
   return new Date(localDate.getTime() + 3 * 60 * 60 * 1000);
 }

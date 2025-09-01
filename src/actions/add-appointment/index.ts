@@ -13,10 +13,10 @@ import { actionClient } from "@/lib/next-safe-action";
 
 import { addAppointmentSchema } from "./schema";
 
+// Configurar dayjs
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-// Configurar timezone padrão para Brasil
 const BRAZIL_TIMEZONE = "America/Sao_Paulo";
 
 export const addAppointment = actionClient
@@ -41,27 +41,32 @@ export const addAppointment = actionClient
       throw new Error("Clínica não encontrada na sessão");
     }
 
-    // Criar data/hora em horário local brasileiro e converter para UTC
-    const [hours, minutes] = parsedInput.time.split(":").map(Number);
-
-    // Criar data local brasileira
-    const localDateTime = dayjs(parsedInput.date)
-      .tz(BRAZIL_TIMEZONE)
-      .hour(hours)
-      .minute(minutes)
-      .second(0)
-      .millisecond(0);
-
-    // Converter para UTC para salvar no banco
-    const appointmentDate = localDateTime.utc().toDate();
+    // Criar data/hora usando dayjs (mesma lógica do appointment card)
+    // ✅ CORREÇÃO: Criar data/hora no timezone brasileiro e converter para UTC
+    const dateStr = dayjs(parsedInput.date).format("YYYY-MM-DD");
+    const dateTimeStr = `${dateStr} ${parsedInput.time}`;
 
     console.log("🔥 Original date:", parsedInput.date);
     console.log("🔥 Original time:", parsedInput.time);
-    console.log(
-      "🔥 Local date time:",
-      localDateTime.format("YYYY-MM-DD HH:mm:ss"),
+    console.log("🔥 Date string:", dateStr);
+    console.log("🔥 DateTime string:", dateTimeStr);
+
+    // Criar data/hora no timezone brasileiro
+    const brazilDateTime = dayjs.tz(
+      dateTimeStr,
+      "YYYY-MM-DD HH:mm",
+      BRAZIL_TIMEZONE,
     );
+
+    // Converter para UTC para salvar no banco (padrão internacional)
+    const appointmentDate = brazilDateTime.utc().toDate();
+
+    console.log("🔥 Brazil date time:", brazilDateTime.format());
     console.log("🔥 UTC date time for DB:", appointmentDate.toISOString());
+    console.log(
+      "🔥 Verificação - UTC convertido de volta para Brasil:",
+      dayjs(appointmentDate).tz(BRAZIL_TIMEZONE).format("HH:mm"),
+    );
 
     // Create appointment
     await db.insert(appointmentsTable).values({

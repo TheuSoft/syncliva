@@ -15,6 +15,12 @@ import {
   X,
 } from "lucide-react";
 
+// Configurar dayjs
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const BRAZIL_TIMEZONE = "America/Sao_Paulo";
+
 import { formatCurrencyInCents } from "@/app/(protected)/doctors/_helpers/availability";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,12 +32,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { AppointmentWithRelations } from "@/types/appointments";
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
-
-// Configurar timezone padrão para Brasil
-const BRAZIL_TIMEZONE = "America/Sao_Paulo";
 
 interface AppointmentCardProps {
   appointment: AppointmentWithRelations;

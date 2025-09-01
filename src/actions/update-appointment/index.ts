@@ -1,10 +1,19 @@
 "use server";
 
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import { db } from "@/db";
 import { appointmentsTable } from "@/db/schema";
+
+// Configurar dayjs
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const BRAZIL_TIMEZONE = "America/Sao_Paulo";
 
 // ✅ Tipo específico para atualizações (sem 'any')
 type PartialAppointmentUpdate = {
@@ -70,7 +79,18 @@ export async function updateAppointment({
 
     if (patientId !== undefined) updateData.patientId = patientId;
     if (doctorId !== undefined) updateData.doctorId = doctorId;
-    if (date !== undefined) updateData.date = date;
+
+    // ✅ Converter data para UTC usando dayjs (mesma lógica dos outros arquivos)
+    if (date !== undefined) {
+      // Se a data vier do frontend, ela estará em horário local brasileiro
+      // Precisamos convertê-la para UTC antes de salvar no banco
+      const utcDate = dayjs(date).tz(BRAZIL_TIMEZONE).utc().toDate();
+      updateData.date = utcDate;
+
+      console.log("🔥 Original date:", date);
+      console.log("🔥 UTC date for DB:", utcDate.toISOString());
+    }
+
     if (appointmentPriceInCents !== undefined) {
       updateData.appointmentPriceInCents = appointmentPriceInCents;
     }

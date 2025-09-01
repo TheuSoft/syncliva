@@ -10,6 +10,12 @@ import { useEffect, useState } from "react";
 import { NumericFormat } from "react-number-format";
 import { toast } from "sonner";
 
+// Configurar dayjs
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const BRAZIL_TIMEZONE = "America/Sao_Paulo";
+
 import { editAppointment } from "@/actions/edit-appointment";
 import { getAvailableTimes } from "@/actions/get-available-times";
 import {
@@ -48,12 +54,6 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { AppointmentWithRelations } from "@/types/appointments";
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
-
-// Configurar timezone padrão para Brasil
-const BRAZIL_TIMEZONE = "America/Sao_Paulo";
 
 type Patient = { id: string; name: string; email: string };
 
@@ -127,10 +127,11 @@ export function EditAppointmentModal({
       setSelectedDoctorId(appointment.doctorId);
       setSelectedDate(new Date(appointment.date));
       setCustomPrice(appointment.appointmentPriceInCents / 100);
-      // Converter data UTC para horário local brasileiro para exibição
+
+      // ✅ Usar dayjs com timezone (mesma lógica do appointment card)
       const currentTime = dayjs(appointment.date)
         .tz(BRAZIL_TIMEZONE)
-        .format("HH:mm:ss");
+        .format("HH:mm");
       console.log("🎯 Setting selected time:", currentTime);
       setSelectedTime(currentTime);
     }
@@ -156,9 +157,10 @@ export function EditAppointmentModal({
   // Garantir que o horário atual seja definido quando os horários disponíveis forem carregados
   useEffect(() => {
     if (appointment && availableTimes.length > 0 && !selectedTime) {
+      // ✅ Usar dayjs com timezone (mesma lógica do appointment card)
       const currentTime = dayjs(appointment.date)
         .tz(BRAZIL_TIMEZONE)
-        .format("HH:mm:ss");
+        .format("HH:mm");
       console.log("🎯 Setting time from available times:", currentTime);
       setSelectedTime(currentTime);
     }
@@ -178,25 +180,25 @@ export function EditAppointmentModal({
 
     setIsLoading(true);
     try {
-      // Criar data/hora em horário local brasileiro e converter para UTC
+      // ✅ Criar data/hora usando dayjs (mesma lógica do add-appointment)
       const [hours, minutes] = selectedTime.split(":").map(Number);
 
-      // Criar data local brasileira
+      // Criar data/hora em timezone brasileiro
       const localDateTime = dayjs(selectedDate)
-        .tz(BRAZIL_TIMEZONE)
         .hour(hours)
         .minute(minutes)
         .second(0)
-        .millisecond(0);
+        .millisecond(0)
+        .tz(BRAZIL_TIMEZONE);
 
       // Converter para UTC para salvar no banco
-      const isoDateTime = localDateTime.utc().toDate();
+      const utcDate = localDateTime.utc().toDate();
 
       const result = await editAppointment({
         appointmentId: appointment.id,
         patientId: selectedPatientId,
         doctorId: selectedDoctorId,
-        date: isoDateTime,
+        date: utcDate,
         appointmentPriceInCents: Math.round(customPrice * 100),
       });
 
