@@ -16,14 +16,13 @@ import {
   PageTitle,
 } from "@/components/ui/page-container";
 import { db } from "@/db";
-import { appointmentsTable, doctorsTable } from "@/db/schema"; // ✅ Removido patientsTable
+import { appointmentsTable, doctorsTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
-import { columns as appointmentsTableColumns } from "../appointments/_components/table-columns";
-import { columns as todayAppointmentsColumns } from "./_components/today-appointments-columns";
 import AppointmentsChart from "./_components/appointments-chart";
 import { DatePicker } from "./_components/date-picker";
 import StatsCards from "./_components/stats-cards";
+import { columns as todayAppointmentsColumns } from "./_components/today-appointments-columns";
 import TopDoctors from "./_components/top-doctors";
 import TopSpecialties from "./_components/top-specialties";
 
