@@ -131,8 +131,10 @@ async function buscarMedicoNoBanco(doctorId: string) {
 }
 
 async function buscarAgendamentosExistentes(
-  _doctorId: string,
-  _date: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  doctorId: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  date: string,
 ): Promise<Array<{ date: string }>> {
   // Substitua pela sua query real
   return [

@@ -148,8 +148,10 @@ async function getDoctorFromDatabase(doctorId: string) {
 }
 
 async function getExistingAppointments(
-  _doctorId: string,
-  _dateString: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  doctorId: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  dateString: string,
 ): Promise<Array<{ date: Date }>> {
   // TODO: Substitua pela sua query real
   // Exemplo usando Drizzle ORM:
