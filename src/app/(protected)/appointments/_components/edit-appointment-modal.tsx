@@ -16,8 +16,8 @@ dayjs.extend(timezone);
 
 const BRAZIL_TIMEZONE = "America/Sao_Paulo";
 
-import { getAvailableTimes } from "@/actions/get-available-times";
-import { updateAppointment } from "@/actions/update-appointment";
+import { getAvailableTimes } from "@/actions/agendamentos/get-available-times";
+import { updateAppointment } from "@/actions/agendamentos/update-appointment";
 import {
   AlertDialog,
   AlertDialogAction,

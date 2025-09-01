@@ -5,7 +5,7 @@ import {
   UsersIcon,
 } from "lucide-react";
 
-import { formatCurrencyInCents } from "@/app/(protected)/doctors/_helpers/availability";
+import { formatCurrencyInCents } from "@/app/(protected)/doctors/_utils/availability";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface StatsCardsProps {

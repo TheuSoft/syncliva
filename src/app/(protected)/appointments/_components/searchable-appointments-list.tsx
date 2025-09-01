@@ -1,7 +1,6 @@
 "use client";
 
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
@@ -14,13 +13,17 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { cancelAppointment } from "@/actions/cancel-appointment";
-import { confirmAppointment } from "@/actions/confirm-appointment";
-import { deleteAppointment } from "@/actions/delete-appointment";
-import { revertToPending } from "@/actions/revert-to-pending";
+import { cancelAppointment } from "@/actions/agendamentos/cancel-appointment";
+import { confirmAppointment } from "@/actions/agendamentos/confirm-appointment";
+import { deleteAppointment } from "@/actions/agendamentos/delete-appointment";
+import { getAppointmentStats } from "@/actions/agendamentos/get-appointment-stats";
+import { getAppointmentsGroupedByMonth } from "@/actions/agendamentos/get-appointments-grouped-by-month";
+import { getAvailableMonths } from "@/actions/agendamentos/get-available-months";
+import { getFilteredAppointments } from "@/actions/agendamentos/get-filtered-appointments";
+import { revertToPending } from "@/actions/agendamentos/revert-to-pending";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,9 +43,6 @@ import { EditAppointmentModal } from "./edit-appointment-modal";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-// Configurar timezone padrão para Brasil
-const BRAZIL_TIMEZONE = "America/Sao_Paulo";
-
 interface SearchableAppointmentsListProps {
   initialAppointments: AppointmentWithRelations[];
   patients: { id: string; name: string; email: string }[];
@@ -55,6 +55,23 @@ interface SearchableAppointmentsListProps {
     appointmentPriceInCents: number;
   }[];
   isDoctor?: boolean; // Indica se estamos no dashboard do médico
+}
+
+interface AppointmentStats {
+  total: number;
+  confirmed: number;
+  pending: number;
+  canceled: number;
+}
+
+interface AvailableMonths {
+  groupedByYear: { [year: string]: { key: string; label: string }[] };
+  sortedYears: string[];
+}
+
+interface MonthGroup {
+  label: string;
+  appointments: AppointmentWithRelations[];
 }
 
 const SearchableAppointmentsList = ({
@@ -78,89 +95,71 @@ const SearchableAppointmentsList = ({
   const [appointmentToEdit, setAppointmentToEdit] =
     useState<AppointmentWithRelations | null>(null);
 
-  // Calcular meses disponíveis dos agendamentos agrupados por ano
-  const availableMonthsByYear = useMemo(() => {
-    const monthsMap = new Map<
-      string,
-      { key: string; label: string; year: string }
-    >();
+  // Estados para dados processados pelas actions
+  const [availableMonths, setAvailableMonths] = useState<AvailableMonths>({
+    groupedByYear: {},
+    sortedYears: [],
+  });
+  const [appointmentStats, setAppointmentStats] = useState<AppointmentStats>({
+    total: 0,
+    confirmed: 0,
+    pending: 0,
+    canceled: 0,
+  });
+  const [filteredAppointments, setFilteredAppointments] = useState<
+    AppointmentWithRelations[]
+  >([]);
+  const [groupedAppointments, setGroupedAppointments] = useState<MonthGroup[]>(
+    [],
+  );
 
-    initialAppointments.forEach((appointment) => {
-      const appointmentDate = dayjs(appointment.date)
-        .tz(BRAZIL_TIMEZONE)
-        .toDate();
-      const monthKey = format(appointmentDate, "yyyy-MM");
-      const year = format(appointmentDate, "yyyy");
-      // Formatar com primeira letra maiúscula
-      let monthLabel = format(appointmentDate, "MMMM", { locale: ptBR });
-      monthLabel = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
+  // Carregar dados processados
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Carregar meses disponíveis
+        const months = await getAvailableMonths({
+          appointments: initialAppointments,
+        });
+        setAvailableMonths(months);
 
-      monthsMap.set(monthKey, { key: monthKey, label: monthLabel, year });
-    });
+        // Carregar estatísticas
+        const stats = await getAppointmentStats({
+          appointments: initialAppointments,
+        });
+        setAppointmentStats(stats);
 
-    const months = Array.from(monthsMap.values());
+        // Carregar agendamentos filtrados
+        const filtered = await getFilteredAppointments({
+          appointments: initialAppointments,
+          filters: {
+            searchTerm,
+            selectedMonth,
+            selectedDoctor,
+            selectedStatus,
+          },
+        });
+        setFilteredAppointments(filtered);
 
-    // Agrupar por ano
-    const groupedByYear = months.reduce(
-      (acc, month) => {
-        if (!acc[month.year]) {
-          acc[month.year] = [];
-        }
-        acc[month.year].push(month);
-        return acc;
-      },
-      {} as Record<string, { key: string; label: string; year: string }[]>,
-    );
-
-    // Ordenar anos (mais recente primeiro) e meses dentro de cada ano
-    const sortedYears = Object.keys(groupedByYear).sort((a, b) =>
-      b.localeCompare(a),
-    );
-
-    sortedYears.forEach((year) => {
-      groupedByYear[year].sort((a, b) => a.key.localeCompare(b.key));
-    });
-
-    return { groupedByYear, sortedYears };
-  }, [initialAppointments]);
-
-  // Estatísticas dos agendamentos
-  const appointmentStats = useMemo(() => {
-    const stats = {
-      total: initialAppointments.length,
-      confirmed: 0,
-      pending: 0,
-      canceled: 0,
+        // Carregar agendamentos agrupados por mês
+        const grouped = await getAppointmentsGroupedByMonth({
+          appointments: filtered,
+        });
+        setGroupedAppointments(grouped);
+      } catch (error) {
+        console.error("Erro ao carregar dados:", error);
+        toast.error("Erro ao carregar dados dos agendamentos");
+      }
     };
 
-    initialAppointments.forEach((appointment) => {
-      stats[appointment.status as keyof typeof stats]++;
-    });
-
-    return stats;
-  }, [initialAppointments]);
-
-  const filteredAppointments = initialAppointments.filter((appointment) => {
-    const matchesSearch = appointment.patient.name
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
-
-    const matchesMonth =
-      selectedMonth === "all"
-        ? true
-        : format(
-            dayjs(appointment.date).tz(BRAZIL_TIMEZONE).toDate(),
-            "yyyy-MM",
-          ) === selectedMonth;
-
-    const matchesDoctor =
-      selectedDoctor === "all" ? true : appointment.doctorId === selectedDoctor;
-
-    const matchesStatus =
-      selectedStatus === "all" ? true : appointment.status === selectedStatus;
-
-    return matchesSearch && matchesMonth && matchesDoctor && matchesStatus;
-  });
+    loadData();
+  }, [
+    initialAppointments,
+    searchTerm,
+    selectedMonth,
+    selectedDoctor,
+    selectedStatus,
+  ]);
 
   const clearFilters = (): void => {
     setSearchTerm("");
@@ -322,13 +321,13 @@ const SearchableAppointmentsList = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os meses</SelectItem>
-                  {availableMonthsByYear.sortedYears.map((year) => (
+                  {availableMonths.sortedYears.map((year: string) => (
                     <div key={year}>
                       <div className="text-muted-foreground px-2 py-1.5 text-sm font-semibold">
                         {year}
                       </div>
-                      {availableMonthsByYear.groupedByYear[year].map(
-                        ({ key, label }) => (
+                      {availableMonths.groupedByYear[year].map(
+                        ({ key, label }: { key: string; label: string }) => (
                           <SelectItem key={key} value={key} className="pl-6">
                             {label}
                           </SelectItem>
@@ -422,100 +421,37 @@ const SearchableAppointmentsList = ({
             </CardContent>
           </Card>
         ) : (
-          (() => {
-            // Agrupar agendamentos por mês
-            const appointmentsByMonth = filteredAppointments.reduce(
-              (acc, appointment) => {
-                const appointmentDate = dayjs(appointment.date)
-                  .tz(BRAZIL_TIMEZONE)
-                  .toDate();
-                const monthKey = format(appointmentDate, "yyyy-MM");
-                const monthLabel = format(appointmentDate, "MMMM 'de' yyyy", {
-                  locale: ptBR,
-                });
-
-                if (!acc[monthKey]) {
-                  acc[monthKey] = {
-                    label:
-                      monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1),
-                    appointments: [],
-                  };
-                }
-                acc[monthKey].appointments.push(appointment);
-                return acc;
-              },
-              {} as Record<
-                string,
-                { label: string; appointments: AppointmentWithRelations[] }
-              >,
-            );
-
-            // Ordenar meses (mais recente primeiro)
-            const sortedMonths = Object.entries(appointmentsByMonth).sort(
-              ([a], [b]) => b.localeCompare(a),
-            );
-
-            // Ordenar agendamentos dentro de cada mês por proximidade da data atual
-            sortedMonths.forEach(([, monthData]) => {
-              monthData.appointments.sort((a, b) => {
-                const today = dayjs().tz(BRAZIL_TIMEZONE).startOf("day");
-                const dateA = dayjs(a.date).tz(BRAZIL_TIMEZONE).startOf("day");
-                const dateB = dayjs(b.date).tz(BRAZIL_TIMEZONE).startOf("day");
-
-                // Calcular diferença em dias da data atual
-                const diffA = dateA.diff(today, "day");
-                const diffB = dateB.diff(today, "day");
-
-                // Se ambos são futuros, ordenar cronologicamente (mais próximo primeiro)
-                if (diffA >= 0 && diffB >= 0) {
-                  return dateA.isBefore(dateB) ? -1 : 1;
-                }
-
-                // Se ambos são passados, ordenar cronologicamente (mais recente primeiro)
-                if (diffA < 0 && diffB < 0) {
-                  return dateA.isAfter(dateB) ? -1 : 1;
-                }
-
-                // Se um é futuro e outro é passado, futuro vem primeiro
-                if (diffA >= 0 && diffB < 0) return -1;
-                if (diffA < 0 && diffB >= 0) return 1;
-
-                return 0;
-              });
-            });
-
-            return sortedMonths.map(([monthKey, { label, appointments }]) => (
-              <div
-                key={monthKey}
-                className="w-full max-w-full space-y-4 overflow-hidden"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="bg-border h-px flex-1" />
-                  <h3 className="text-foreground text-lg font-semibold">
-                    {label}
-                  </h3>
-                  <div className="bg-border h-px flex-1" />
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                  {appointments.map((appointment) => (
-                    <AppointmentCard
-                      key={appointment.id}
-                      appointment={appointment}
-                      variant="compact"
-                      onEdit={handleEditAppointment}
-                      onConfirm={handleConfirmAppointment}
-                      onCancel={handleCancelAppointment}
-                      onRevertToPending={handleRevertToPending}
-                      onDelete={handleDeleteAppointment}
-                      isDoctor={isDoctor}
-                      showActions={true}
-                    />
-                  ))}
-                </div>
+          groupedAppointments.map((monthGroup, monthIndex) => (
+            <div
+              key={monthIndex}
+              className="w-full max-w-full space-y-4 overflow-hidden"
+            >
+              <div className="flex items-center gap-3">
+                <div className="bg-border h-px flex-1" />
+                <h3 className="text-foreground text-lg font-semibold">
+                  {monthGroup.label}
+                </h3>
+                <div className="bg-border h-px flex-1" />
               </div>
-            ));
-          })()
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {monthGroup.appointments.map((appointment) => (
+                  <AppointmentCard
+                    key={appointment.id}
+                    appointment={appointment}
+                    variant="compact"
+                    onEdit={handleEditAppointment}
+                    onConfirm={handleConfirmAppointment}
+                    onCancel={handleCancelAppointment}
+                    onRevertToPending={handleRevertToPending}
+                    onDelete={handleDeleteAppointment}
+                    isDoctor={isDoctor}
+                    showActions={true}
+                  />
+                ))}
+              </div>
+            </div>
+          ))
         )}
       </div>
 

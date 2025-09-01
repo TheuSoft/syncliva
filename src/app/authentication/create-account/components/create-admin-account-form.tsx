@@ -9,8 +9,8 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
-import { createAdminAccount } from "@/actions/create-admin-account";
-import { createAdminAccountSchema } from "@/actions/create-admin-account/schema";
+import { createAdminAccount } from "@/actions/clinica/create-admin-account";
+import { createAdminAccountSchema } from "@/actions/clinica/create-admin-account/schema";
 import { Button } from "@/components/ui/button";
 import {
   Form,

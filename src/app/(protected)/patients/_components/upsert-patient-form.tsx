@@ -6,11 +6,11 @@ import { useForm } from "react-hook-form";
 import { PatternFormat } from "react-number-format";
 import { toast } from "sonner";
 
-import { upsertPatient } from "@/actions/upsert-patient";
+import { upsertPatient } from "@/actions/pacientes/upsert-patient";
 import {
   UpsertPatientSchema,
   upsertPatientSchema,
-} from "@/actions/upsert-patient/schema";
+} from "@/actions/pacientes/upsert-patient/schema";
 import { Button } from "@/components/ui/button";
 import {
   DialogContent,

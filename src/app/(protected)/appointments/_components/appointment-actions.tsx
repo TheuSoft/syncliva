@@ -4,7 +4,7 @@ import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
-import { confirmAppointment } from "@/actions/confirm-appointment";
+import { confirmAppointment } from "@/actions/agendamentos/confirm-appointment";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,

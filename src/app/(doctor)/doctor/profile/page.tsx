@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 
-import { formatCurrencyInCents } from "@/app/(protected)/doctors/_helpers/availability";
+import { formatCurrencyInCents } from "@/app/(protected)/doctors/_utils/availability";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

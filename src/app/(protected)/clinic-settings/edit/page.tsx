@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { updateClinicInfo } from "@/actions/update-clinic-info";
+import { updateClinicInfo } from "@/actions/clinica/update-clinic-info";
 import {
   AlertDialog,
   AlertDialogAction,

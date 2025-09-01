@@ -6,7 +6,10 @@ import { useAction } from "next-safe-action/hooks";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { registerDoctor, validateInvite } from "@/actions/doctor-registration";
+import {
+  registerDoctor,
+  validateInvite,
+} from "@/actions/medicos/doctor-registration";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";

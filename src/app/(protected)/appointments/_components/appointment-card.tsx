@@ -21,7 +21,7 @@ dayjs.extend(timezone);
 
 const BRAZIL_TIMEZONE = "America/Sao_Paulo";
 
-import { formatCurrencyInCents } from "@/app/(protected)/doctors/_helpers/availability";
+import { formatCurrencyInCents } from "@/app/(protected)/doctors/_utils/availability";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {

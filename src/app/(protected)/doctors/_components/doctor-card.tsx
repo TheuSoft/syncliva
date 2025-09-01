@@ -16,10 +16,10 @@ import { useAction } from "next-safe-action/hooks";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { inviteDoctor } from "@/actions/invite-doctor";
-import { resendInvite } from "@/actions/resend-invite";
-import { updateInviteEmail } from "@/actions/update-invite-email";
-import { formatCurrencyInCents } from "@/app/(protected)/doctors/_helpers/availability";
+import { inviteDoctor } from "@/actions/medicos/invite-doctor";
+import { resendInvite } from "@/actions/medicos/resend-invite";
+import { updateInviteEmail } from "@/actions/medicos/update-invite-email";
+import { formatCurrencyInCents } from "@/app/(protected)/doctors/_utils/availability";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,7 +43,7 @@ import { Label } from "@/components/ui/label";
 import { doctorsTable } from "@/db/schema";
 import { usePersistentToken } from "@/hooks/use-persistent-token";
 
-import { getAvailability } from "../_helpers/availability";
+import { getAvailability } from "../_utils/availability";
 import { DeleteDoctorConfirmationDialog } from "./delete-doctor-confirmation-modal";
 import { ResetDoctorPasswordDialog } from "./reset-password-modal";
 import { TokenDisplayDialog } from "./token-display-dialog";

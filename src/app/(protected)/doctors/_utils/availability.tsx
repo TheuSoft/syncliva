@@ -8,6 +8,11 @@ import { doctorsTable } from "@/db/schema";
 dayjs.extend(utc);
 dayjs.locale("pt-br");
 
+/**
+ * Calcula a disponibilidade do médico formatada
+ * @param doctor - Dados do médico
+ * @returns Objeto com horários de início e fim formatados
+ */
 export const getAvailability = (doctor: typeof doctorsTable.$inferSelect) => {
   // ✅ CORREÇÃO: Manter horários como estão, sem conversões UTC desnecessárias
   const from = dayjs()

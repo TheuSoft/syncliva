@@ -5,7 +5,7 @@ import { useAction } from "next-safe-action/hooks";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { resendInvite } from "@/actions/resend-invite";
+import { resendInvite } from "@/actions/medicos/resend-invite";
 import { Button } from "@/components/ui/button";
 import { usePersistentToken } from "@/hooks/use-persistent-token";
 

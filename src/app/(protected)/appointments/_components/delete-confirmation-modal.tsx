@@ -9,7 +9,7 @@ import { Calendar, Clock, Stethoscope, Trash2, User } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { deleteAppointment } from "@/actions/delete-appointment";
+import { deleteAppointment } from "@/actions/agendamentos/delete-appointment";
 import {
   AlertDialog,
   AlertDialogAction,

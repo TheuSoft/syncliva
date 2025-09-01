@@ -1,9 +1,9 @@
 import dayjs from "dayjs";
-import { and, count, eq, gte, lte, sql, sum } from "drizzle-orm";
 import { Calendar } from "lucide-react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { getDashboardData } from "@/actions/clinica/get-dashboard-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import {
@@ -15,8 +15,6 @@ import {
   PageHeaderContent,
   PageTitle,
 } from "@/components/ui/page-container";
-import { db } from "@/db";
-import { appointmentsTable, doctorsTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
 import AppointmentsChart from "./_components/appointments-chart";
@@ -56,14 +54,8 @@ const DashboardPage = async ({ searchParams }: DashboardPageProps) => {
 
   const clinicId = session.user.clinic.id;
 
-  // ✅ Filtro para status: apenas 'pending' e 'confirmed'
-  const statusFilter = sql`${appointmentsTable.status} IN ('pending', 'confirmed')`;
-  const dateFilter = and(
-    gte(appointmentsTable.date, new Date(from)),
-    lte(appointmentsTable.date, new Date(to)),
-  );
-
-  const [
+  // ✅ Usar server action para buscar todos os dados do dashboard
+  const {
     totalRevenue,
     totalAppointments,
     totalPatients,
@@ -71,126 +63,8 @@ const DashboardPage = async ({ searchParams }: DashboardPageProps) => {
     topDoctors,
     topSpecialties,
     todayAppointments,
-    dailyAppointmentsDataRaw,
-  ] = await Promise.all([
-    // ✅ Receita total (apenas agendamentos pendentes e confirmados)
-    db
-      .select({ total: sum(appointmentsTable.appointmentPriceInCents) })
-      .from(appointmentsTable)
-      .where(
-        and(eq(appointmentsTable.clinicId, clinicId), dateFilter, statusFilter),
-      ),
-
-    // ✅ Total de agendamentos (apenas pendentes e confirmados)
-    db
-      .select({ total: count() })
-      .from(appointmentsTable)
-      .where(
-        and(eq(appointmentsTable.clinicId, clinicId), dateFilter, statusFilter),
-      ),
-
-    // ✅ Total de pacientes únicos (baseado em agendamentos ativos)
-    db
-      .selectDistinct({ patientId: appointmentsTable.patientId })
-      .from(appointmentsTable)
-      .where(
-        and(eq(appointmentsTable.clinicId, clinicId), dateFilter, statusFilter),
-      )
-      .then((result) => ({ total: result.length })),
-
-    // Total de médicos (não precisa de filtro por status)
-    db
-      .select({ total: count() })
-      .from(doctorsTable)
-      .where(eq(doctorsTable.clinicId, clinicId)),
-
-    // ✅ Top médicos com campos corretos e filtro por status
-    db
-      .select({
-        id: doctorsTable.id,
-        name: doctorsTable.name,
-        avatarImageUrl: doctorsTable.avatarImageUrl, // ✅ Campo necessário
-        specialty: doctorsTable.specialty,
-        appointments: count(appointmentsTable.id), // ✅ Nome correto
-      })
-      .from(doctorsTable)
-      .leftJoin(
-        appointmentsTable,
-        and(
-          eq(doctorsTable.id, appointmentsTable.doctorId),
-          dateFilter,
-          statusFilter, // ✅ Filtro aplicado
-        ),
-      )
-      .where(eq(doctorsTable.clinicId, clinicId))
-      .groupBy(
-        doctorsTable.id,
-        doctorsTable.name,
-        doctorsTable.avatarImageUrl, // ✅ Incluído no GROUP BY
-        doctorsTable.specialty,
-      )
-      .orderBy(sql`count(${appointmentsTable.id}) desc`)
-      .limit(5),
-
-    // ✅ Top especialidades com nome correto e filtro por status
-    db
-      .select({
-        specialty: doctorsTable.specialty,
-        appointments: count(appointmentsTable.id), // ✅ Nome correto (não appointmentCount)
-      })
-      .from(doctorsTable)
-      .leftJoin(
-        appointmentsTable,
-        and(
-          eq(doctorsTable.id, appointmentsTable.doctorId),
-          dateFilter,
-          statusFilter, // ✅ Filtro aplicado
-        ),
-      )
-      .where(eq(doctorsTable.clinicId, clinicId))
-      .groupBy(doctorsTable.specialty)
-      .orderBy(sql`count(${appointmentsTable.id}) desc`)
-      .limit(5),
-
-    // ✅ Agendamentos de hoje (apenas pendentes e confirmados)
-    db.query.appointmentsTable.findMany({
-      where: and(
-        eq(appointmentsTable.clinicId, clinicId),
-        gte(
-          appointmentsTable.date,
-          new Date(dayjs().startOf("day").toISOString()),
-        ),
-        lte(
-          appointmentsTable.date,
-          new Date(dayjs().endOf("day").toISOString()),
-        ),
-        statusFilter, // ✅ Filtro aplicado
-      ),
-      with: { patient: true, doctor: true },
-      orderBy: (appointments, { asc }) => [asc(appointments.date)],
-    }),
-
-    // ✅ Dados do gráfico (apenas pendentes e confirmados)
-    db
-      .select({
-        date: sql<string>`DATE(${appointmentsTable.date})`,
-        appointments: count(appointmentsTable.id),
-        revenue: sum(appointmentsTable.appointmentPriceInCents),
-      })
-      .from(appointmentsTable)
-      .where(
-        and(eq(appointmentsTable.clinicId, clinicId), dateFilter, statusFilter),
-      )
-      .groupBy(sql`DATE(${appointmentsTable.date})`)
-      .orderBy(sql`DATE(${appointmentsTable.date})`),
-  ]);
-
-  // ✅ Converter revenue de string para number (correção de tipo)
-  const dailyAppointmentsData = dailyAppointmentsDataRaw.map((item) => ({
-    date: item.date,
-    appointments: item.appointments,
-    revenue: item.revenue ? Number(item.revenue) : null,
-  }));
+    dailyAppointmentsData,
+  } = await getDashboardData(clinicId, from, to);
 
   return (
     <PageContainer>
@@ -207,12 +81,10 @@ const DashboardPage = async ({ searchParams }: DashboardPageProps) => {
       </PageHeader>
       <PageContent>
         <StatsCards
-          totalRevenue={
-            totalRevenue[0]?.total ? Number(totalRevenue[0].total) : null
-          }
-          totalAppointments={totalAppointments[0]?.total || 0}
-          totalPatients={totalPatients?.total || 0}
-          totalDoctors={totalDoctors[0]?.total || 0}
+          totalRevenue={totalRevenue}
+          totalAppointments={totalAppointments}
+          totalPatients={totalPatients}
+          totalDoctors={totalDoctors}
         />
         <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
           <AppointmentsChart dailyAppointmentsData={dailyAppointmentsData} />
@@ -231,10 +103,7 @@ const DashboardPage = async ({ searchParams }: DashboardPageProps) => {
           <CardContent>
             <DataTable
               columns={todayAppointmentsColumns}
-              data={todayAppointments.map((appointment) => ({
-                ...appointment,
-                updatedAt: appointment.updatedAt ?? new Date(),
-              }))}
+              data={todayAppointments}
             />
           </CardContent>
         </Card>

@@ -3,6 +3,7 @@ import { Stethoscope, UserCheck, Users, UserX } from "lucide-react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { getDoctorStatistics } from "@/actions/medicos/get-doctor-statistics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   PageActions,
@@ -34,17 +35,9 @@ const DoctorsPage = async () => {
     where: eq(doctorsTable.clinicId, session.user.clinic.id),
   });
 
-  // Calcular estatísticas
-  const totalDoctors = doctors.length;
-  const activeDoctors = doctors.filter(
-    (doctor) => !!doctor.registeredAt,
-  ).length;
-  const invitedDoctors = doctors.filter(
-    (doctor) => !!doctor.inviteToken && !doctor.registeredAt,
-  ).length;
-  const pendingDoctors = doctors.filter(
-    (doctor) => !doctor.inviteToken && !doctor.registeredAt,
-  ).length;
+  // ✅ Usar server action para calcular estatísticas
+  const { totalDoctors, activeDoctors, invitedDoctors, pendingDoctors } =
+    await getDoctorStatistics(session.user.clinic.id);
 
   return (
     <PageContainer>

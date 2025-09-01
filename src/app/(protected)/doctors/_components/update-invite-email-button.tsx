@@ -5,7 +5,7 @@ import { useAction } from "next-safe-action/hooks";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { updateInviteEmail } from "@/actions/update-invite-email";
+import { updateInviteEmail } from "@/actions/medicos/update-invite-email";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

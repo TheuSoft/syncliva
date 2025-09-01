@@ -11,7 +11,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { deleteDoctor } from "@/actions/delete-doctor";
+import { deleteDoctor } from "@/actions/medicos/delete-doctor";
 import {
   AlertDialog,
   AlertDialogAction,

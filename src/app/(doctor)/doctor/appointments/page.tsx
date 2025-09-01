@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 
-import { getDoctorAppointments } from "@/actions/get-doctor-appointments";
+import { getDoctorAppointments } from "@/actions/medicos/get-doctor-appointments";
 import { SearchableAppointmentsList } from "@/app/(protected)/appointments/_components/searchable-appointments-list";
 import { Card, CardContent } from "@/components/ui/card";
 import {

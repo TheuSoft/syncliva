@@ -20,9 +20,9 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 
-import { getDoctorsListAction } from "@/actions/get-doctors-list";
-import { getRelatorioConsultasAction } from "@/actions/get-relatorio-consultas";
-import { formatCurrencyInCents } from "@/app/(protected)/doctors/_helpers/availability";
+import { getDoctorsListAction } from "@/actions/medicos/get-doctors-list";
+import { getRelatorioConsultasAction } from "@/actions/relatorios/get-relatorio-consultas";
+import { formatCurrencyInCents } from "@/app/(protected)/doctors/_utils/availability";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

@@ -14,7 +14,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { resetDoctorPassword } from "@/actions/reset-doctor-password";
+import { resetDoctorPassword } from "@/actions/medicos/reset-doctor-password";
 import {
   AlertDialog,
   AlertDialogContent,

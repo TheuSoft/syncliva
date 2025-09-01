@@ -5,7 +5,7 @@ import { useAction } from "next-safe-action/hooks";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { inviteDoctor } from "@/actions/invite-doctor";
+import { inviteDoctor } from "@/actions/medicos/invite-doctor";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

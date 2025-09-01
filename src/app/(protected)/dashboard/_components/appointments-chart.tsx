@@ -8,7 +8,7 @@ dayjs.locale("pt-br");
 import { Calendar } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
-import { formatCurrencyInCents } from "@/app/(protected)/doctors/_helpers/availability";
+import { formatCurrencyInCents } from "@/app/(protected)/doctors/_utils/availability";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   type ChartConfig,

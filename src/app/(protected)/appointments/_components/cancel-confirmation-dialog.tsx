@@ -15,7 +15,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { cancelAppointment } from "@/actions/cancel-appointment";
+import { cancelAppointment } from "@/actions/agendamentos/cancel-appointment";
 import {
   AlertDialog,
   AlertDialogAction,
