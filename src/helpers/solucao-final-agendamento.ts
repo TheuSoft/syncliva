@@ -38,13 +38,8 @@ export function getAvailableTimesRobust(
   existingAppointments: ExistingAppointment[] = [],
   intervalMinutes: number = 30,
 ): TimeSlot[] {
-  console.log(`🏥 Gerando horários para ${doctor.id} em ${targetDate}`);
-
   // ✅ CORREÇÃO 1: Criar data de forma segura, independente do timezone
   const dayOfWeek = getSafeDayOfWeek(targetDate);
-  console.log(
-    `📅 Dia da semana calculado: ${dayOfWeek} (${getDayName(dayOfWeek)})`,
-  );
 
   // ✅ CORREÇÃO 2: Verificar se médico atende neste dia da semana
   const isAvailable = isDoctorAvailableOnDay(
@@ -54,15 +49,8 @@ export function getAvailableTimesRobust(
   );
 
   if (!isAvailable) {
-    console.log(
-      `❌ Médico não atende no dia ${dayOfWeek} (${getDayName(dayOfWeek)})`,
-    );
     return [];
   }
-
-  console.log(
-    `✅ Médico atende no dia ${dayOfWeek} (${getDayName(dayOfWeek)})`,
-  );
 
   // ✅ CORREÇÃO 3: Gerar todos os slots de tempo possíveis
   const allSlots = generateTimeSlots(
@@ -80,25 +68,6 @@ export function getAvailableTimesRobust(
     label: time,
     available: !occupiedSlots.includes(time), // false se ocupado, true se disponível
   }));
-
-  const availableCount = allTimeSlots.filter((slot) => slot.available).length;
-  const occupiedCount = allTimeSlots.filter((slot) => !slot.available).length;
-
-  console.log(
-    `🕐 Total: ${allSlots.length}, Disponíveis: ${availableCount}, Ocupados: ${occupiedCount}`,
-  );
-  console.log(
-    `✅ Horários disponíveis: ${allTimeSlots
-      .filter((s) => s.available)
-      .map((s) => s.value)
-      .join(", ")}`,
-  );
-  console.log(
-    `🚫 Horários ocupados: ${allTimeSlots
-      .filter((s) => !s.available)
-      .map((s) => s.value)
-      .join(", ")}`,
-  );
 
   return allTimeSlots;
 }
@@ -222,24 +191,9 @@ function formatDateToYYYYMMDD(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-function getDayName(dayOfWeek: number): string {
-  const days = [
-    "Domingo",
-    "Segunda",
-    "Terça",
-    "Quarta",
-    "Quinta",
-    "Sexta",
-    "Sábado",
-  ];
-  return days[dayOfWeek];
-}
-
 // ✅ EXEMPLO DE USO COMPLETO
 
 export function exemploCompleto() {
-  console.log("🧪 TESTE COMPLETO DA SOLUÇÃO\n");
-
   // Configuração do médico
   const doctor: DoctorConfig = {
     id: "dr-joao",

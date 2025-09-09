@@ -32,8 +32,7 @@ export function SessionTimeoutProvider({
       window.location.href = "/authentication";
     },
     onWarning: () => {
-      // Log para debug
-      console.log("Aviso de timeout de sessão exibido");
+      // Aviso de timeout será exibido
     },
   });
 

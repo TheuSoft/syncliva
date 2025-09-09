@@ -135,7 +135,6 @@ export const updateInviteEmail = actionClient
         doctorEmail: newEmail,
       };
     } catch (error) {
-      console.error("Erro ao alterar email do convite:", error);
       throw new Error(
         error instanceof Error ? error.message : "Erro interno do servidor",
       );

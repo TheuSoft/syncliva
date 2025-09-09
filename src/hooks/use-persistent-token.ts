@@ -44,8 +44,7 @@ export function usePersistentToken(doctorId: string) {
           }
         }
       }
-    } catch (error) {
-      console.error("Erro ao carregar token do localStorage:", error);
+    } catch {
       localStorage.removeItem(storageKey);
     }
   }, [storageKey]);
@@ -66,8 +65,8 @@ export function usePersistentToken(doctorId: string) {
       localStorage.setItem(storageKey, JSON.stringify(stateToSave));
       setHasGeneratedToken(true);
       setTokenData(tokenWithTimestamp);
-    } catch (error) {
-      console.error("Erro ao salvar token no localStorage:", error);
+    } catch {
+      // Falha silenciosa ao salvar
     }
   };
 
@@ -77,8 +76,8 @@ export function usePersistentToken(doctorId: string) {
       localStorage.removeItem(storageKey);
       setHasGeneratedToken(false);
       setTokenData(null);
-    } catch (error) {
-      console.error("Erro ao limpar token do localStorage:", error);
+    } catch {
+      // Falha silenciosa ao limpar
     }
   };
 

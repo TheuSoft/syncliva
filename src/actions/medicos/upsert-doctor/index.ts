@@ -21,11 +21,6 @@ export const upsertDoctor = actionClient
     const availableFromTime = parsedInput.availableFromTime; // Ex: "08:00:00"
     const availableToTime = parsedInput.availableToTime; // Ex: "18:00:00"
 
-    console.log("🎯 Saving doctor availability (local time):", {
-      from: availableFromTime,
-      to: availableToTime,
-    });
-
     const session = await auth.api.getSession({
       headers: await headers(),
     });

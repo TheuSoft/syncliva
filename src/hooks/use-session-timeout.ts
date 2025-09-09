@@ -29,8 +29,8 @@ export function useSessionTimeout({
         duration: 5000,
       });
       onTimeout?.();
-    } catch (error) {
-      console.error("Erro ao fazer logout:", error);
+    } catch {
+      // Em caso de erro, apenas silenciosamente falha
     }
   }, [onTimeout]);
 
