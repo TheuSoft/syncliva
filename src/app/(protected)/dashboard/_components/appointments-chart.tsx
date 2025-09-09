@@ -25,16 +25,23 @@ interface DailyAppointment {
 
 interface AppointmentsChartProps {
   dailyAppointmentsData: DailyAppointment[];
+  from?: string;
+  to?: string;
 }
 
 const AppointmentsChart = ({
   dailyAppointmentsData,
+  from,
+  to,
 }: AppointmentsChartProps) => {
-  // Gerar 21 dias: 10 antes + hoje + 10 depois
-  const chartDays = Array.from({ length: 21 }).map((_, i) =>
-    dayjs()
-      .subtract(10 - i, "days")
-      .format("YYYY-MM-DD"),
+  // Usar as datas do período selecionado ou padrão do mês atual
+  const startDate = from ? dayjs(from) : dayjs().startOf("month");
+  const endDate = to ? dayjs(to) : dayjs().endOf("month");
+
+  // Gerar todos os dias do período selecionado
+  const totalDays = endDate.diff(startDate, "day") + 1;
+  const chartDays = Array.from({ length: totalDays }).map((_, i) =>
+    startDate.add(i, "day").format("YYYY-MM-DD"),
   );
 
   const chartData = chartDays.map((date) => {
@@ -46,6 +53,14 @@ const AppointmentsChart = ({
       revenue: Number(dataForDay?.revenue || 0),
     };
   });
+
+  // Determinar o título do período
+  const getPeriodTitle = () => {
+    if (startDate.isSame(endDate, "month")) {
+      return `${startDate.format("MMMM [de] YYYY")}`;
+    }
+    return `${startDate.format("DD/MM/YYYY")} - ${endDate.format("DD/MM/YYYY")}`;
+  };
 
   const chartConfig = {
     appointments: {
@@ -69,9 +84,7 @@ const AppointmentsChart = ({
             <CardTitle className="text-lg font-semibold">
               Agendamentos e Faturamento
             </CardTitle>
-            <p className="text-muted-foreground text-sm">
-              Últimos 21 dias de atividade
-            </p>
+            <p className="text-muted-foreground text-sm">{getPeriodTitle()}</p>
           </div>
         </div>
       </CardHeader>

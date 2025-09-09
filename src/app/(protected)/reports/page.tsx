@@ -95,6 +95,12 @@ export default function ReportsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Buscar automaticamente quando as datas mudarem
+  useEffect(() => {
+    buscar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mes, ano, tipoRelatorio]);
+
   const buscar = async () => {
     setLoading(true);
     setErro("");

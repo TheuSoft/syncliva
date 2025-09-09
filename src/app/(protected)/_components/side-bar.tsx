@@ -11,8 +11,20 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
 
 import { Logo } from "@/components/logo";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -66,15 +78,27 @@ export function AppSidebar() {
   const router = useRouter();
   const session = authClient.useSession();
   const pathname = usePathname();
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   const handleSignOut = async () => {
-    await authClient.signOut({
-      fetchOptions: {
-        onSuccess: () => {
-          router.push("/authentication");
+    setShowLogoutDialog(false);
+    toast.loading("Saindo...", { id: "logout" });
+
+    try {
+      await authClient.signOut({
+        fetchOptions: {
+          onSuccess: () => {
+            toast.success("Logout realizado com sucesso!", { id: "logout" });
+            router.push("/authentication");
+          },
+          onError: () => {
+            toast.error("Erro ao fazer logout", { id: "logout" });
+          },
         },
-      },
-    });
+      });
+    } catch {
+      toast.error("Erro ao fazer logout", { id: "logout" });
+    }
   };
 
   return (
@@ -156,7 +180,7 @@ export function AppSidebar() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={handleSignOut}
+                  onClick={() => setShowLogoutDialog(true)}
                   className="hover:bg-destructive/10 cursor-pointer rounded-md transition-colors"
                 >
                   <div className="flex w-full items-center gap-3 px-3 py-2">
@@ -173,6 +197,35 @@ export function AppSidebar() {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+
+      {/* Dialog de confirmação de logout */}
+      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <AlertDialogContent className="from-background to-muted/20 border-border/40 bg-gradient-to-br shadow-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-3">
+              <div className="bg-destructive/10 border-destructive/20 flex h-10 w-10 items-center justify-center rounded-lg border">
+                <LogOut className="text-destructive h-5 w-5" />
+              </div>
+              Confirmar Logout
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground">
+              Tem certeza que deseja sair do sistema? Você será redirecionado
+              para a página de login.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-3">
+            <AlertDialogCancel className="border-border/40">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleSignOut}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            >
+              Sim, Sair
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sidebar>
   );
 }

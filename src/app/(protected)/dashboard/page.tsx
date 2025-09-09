@@ -48,7 +48,7 @@ const DashboardPage = async ({ searchParams }: DashboardPageProps) => {
 
   if (!from || !to) {
     redirect(
-      `/dashboard?from=${dayjs().format("YYYY-MM-DD")}&to=${dayjs().add(1, "month").format("YYYY-MM-DD")}`,
+      `/dashboard?from=${dayjs().startOf("month").format("YYYY-MM-DD")}&to=${dayjs().endOf("month").format("YYYY-MM-DD")}`,
     );
   }
 
@@ -87,7 +87,11 @@ const DashboardPage = async ({ searchParams }: DashboardPageProps) => {
           totalDoctors={totalDoctors}
         />
         <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
-          <AppointmentsChart dailyAppointmentsData={dailyAppointmentsData} />
+          <AppointmentsChart
+            dailyAppointmentsData={dailyAppointmentsData}
+            from={from}
+            to={to}
+          />
           <div className="space-y-6">
             <TopDoctors doctors={topDoctors} />
             <TopSpecialties topSpecialties={topSpecialties} />

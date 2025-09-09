@@ -7,21 +7,24 @@ import { authClient } from "@/lib/auth-client";
 
 const SignOutButton = () => {
   const router = useRouter();
-  return (
-    <Button
-      onClick={() =>
-        authClient.signOut({
-          fetchOptions: {
-            onSuccess: () => {
-              router.push("/authentication");
-            },
+
+  const handleSignOut = () => {
+    const confirmed = window.confirm(
+      "Tem certeza de que deseja sair do sistema?",
+    );
+
+    if (confirmed) {
+      authClient.signOut({
+        fetchOptions: {
+          onSuccess: () => {
+            router.push("/authentication");
           },
-        })
-      }
-    >
-      Sair
-    </Button>
-  );
+        },
+      });
+    }
+  };
+
+  return <Button onClick={handleSignOut}>Sair</Button>;
 };
 
 export default SignOutButton;
