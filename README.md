@@ -35,22 +35,27 @@ Sistema completo de gestão para clínicas médicas desenvolvido com Next.js 15,
 ## ⚙️ Configuração e Instalação
 
 1. **Clone o repositório**
+
 ```bash
 git clone <your-repo-url>
+
 cd syncliva
 ```
 
 2. **Instale as dependências**
+
 ```bash
 npm install
 ```
 
 3. **Configure as variáveis de ambiente**
+
 ```bash
 cp .env.example .env.local
 ```
 
 Edite o arquivo `.env.local` com suas configurações:
+
 ```env
 DATABASE_URL="postgresql://username:password@localhost:5432/syncliva"
 GOOGLE_CLIENT_ID="your-google-client-id" # Opcional
@@ -60,11 +65,13 @@ BETTER_AUTH_URL="http://localhost:3000"
 ```
 
 4. **Execute as migrações do banco de dados**
+
 ```bash
 npm run db:migrate
 ```
 
 5. **Inicie o servidor de desenvolvimento**
+
 ```bash
 npm run dev
 ```
@@ -97,6 +104,7 @@ src/
 ## 🔐 Autenticação
 
 O sistema utiliza better-auth para autenticação segura, suportando:
+
 - Login com email e senha
 - Login com Google (opcional)
 - Gerenciamento de sessões
@@ -121,6 +129,7 @@ O sistema utiliza better-auth para autenticação segura, suportando:
 ### Outras Plataformas
 
 O projeto é compatível com qualquer plataforma que suporte Node.js:
+
 - Railway
 - Render
 - Heroku
@@ -145,10 +154,6 @@ GOOGLE_CLIENT_SECRET="..." # Opcional
 4. Push para a branch (`git push origin feature/AmazingFeature`)
 5. Abra um Pull Request
 
-## 📝 Licença
-
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para detalhes.
-
 ## 📞 Suporte
 
-Para suporte, entre em contato através do email: seu-email@exemplo.com
+Para suporte, entre em contato através do email: matheusmarques150@hotmail.com
